@@ -1,0 +1,416 @@
+/**
+ * Ghost Key Universal Extension - Modal and Notification Styles
+ * Dark cybersecurity theme matching the project aesthetic
+ */
+
+/* Modal Base Styles */
+.ghost-key-modal,
+.ghost-key-voice-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.ghost-key-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.ghost-key-modal-content {
+  background: linear-gradient(145deg, #1a1a1a, #2d2d2d);
+  border: 1px solid #444;
+  border-radius: 12px;
+  max-width: 480px;
+  width: 90%;
+  max-height: 80vh;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 
+              0 0 0 1px rgba(255, 255, 255, 0.1),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  animation: slideIn 0.3s ease-out;
+  color: #ffffff;
+}
+
+/* Modal Header */
+.ghost-key-modal-header {
+  background: linear-gradient(135deg, #0066cc, #004499);
+  padding: 20px 24px;
+  border-bottom: 1px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ghost-key-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ghost-key-modal-close {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.ghost-key-modal-close:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Modal Body */
+.ghost-key-modal-body {
+  padding: 24px;
+}
+
+.ghost-key-modal-body p {
+  margin: 0 0 16px 0;
+  line-height: 1.5;
+  color: #e0e0e0;
+}
+
+.ghost-key-modal-subtitle {
+  font-size: 14px;
+  color: #999;
+  margin-top: 8px;
+}
+
+/* Modal Actions */
+.ghost-key-modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  justify-content: center;
+}
+
+/* Buttons */
+.ghost-key-btn {
+  padding: 12px 24px;
+  border-radius: 6px;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+.ghost-key-btn-primary {
+  background: linear-gradient(135deg, #007cba, #005a87);
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 124, 186, 0.3);
+}
+
+.ghost-key-btn-primary:hover {
+  background: linear-gradient(135deg, #005a87, #004d73);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 124, 186, 0.4);
+}
+
+.ghost-key-btn-secondary {
+  background: #4a4a4a;
+  color: white;
+  border: 1px solid #666;
+}
+
+.ghost-key-btn-secondary:hover {
+  background: #555;
+  border-color: #777;
+}
+
+.ghost-key-btn-danger {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  color: white;
+}
+
+.ghost-key-btn-danger:hover {
+  background: linear-gradient(135deg, #c82333, #a71e2a);
+  transform: translateY(-1px);
+}
+
+.ghost-key-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Voice Modal Specific Styles */
+.ghost-key-passphrase {
+  text-align: center;
+  font-size: 16px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background: rgba(0, 124, 186, 0.1);
+  border: 1px solid rgba(0, 124, 186, 0.3);
+  border-radius: 8px;
+}
+
+.ghost-key-passphrase strong {
+  color: #00bcd4;
+  font-weight: 600;
+}
+
+.ghost-key-recording-controls {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.ghost-key-recording-status {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #bbb;
+  min-height: 20px;
+}
+
+.ghost-key-progress {
+  background: #333;
+  border-radius: 4px;
+  overflow: hidden;
+  height: 8px;
+  margin: 16px 0;
+}
+
+.ghost-key-progress-bar {
+  background: linear-gradient(90deg, #007cba, #00bcd4);
+  height: 100%;
+  width: 0%;
+  transition: width 0.3s ease;
+  animation: progressPulse 1.5s infinite;
+}
+
+/* Message/Notification Styles */
+.ghost-key-message {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 16px 20px;
+  max-width: 320px;
+  z-index: 10001;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  animation: slideInRight 0.3s ease-out;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.ghost-key-message-content h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ghost-key-message-content p {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #e0e0e0;
+}
+
+.ghost-key-message-success {
+  border-left: 4px solid #28a745;
+  background: linear-gradient(135deg, #1a3e1a, #2d5a2d);
+}
+
+.ghost-key-message-success h4 {
+  color: #4caf50;
+}
+
+.ghost-key-message-error {
+  border-left: 4px solid #dc3545;
+  background: linear-gradient(135deg, #3e1a1a, #5a2d2d);
+}
+
+.ghost-key-message-error h4 {
+  color: #f44336;
+}
+
+.ghost-key-message-info {
+  border-left: 4px solid #007cba;
+  background: linear-gradient(135deg, #1a2d3e, #2d4a5a);
+}
+
+.ghost-key-message-info h4 {
+  color: #2196f3;
+}
+
+/* Visual Indicator */
+.ghost-key-indicator {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+.ghost-key-indicator:hover {
+  opacity: 1;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes progressPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Recording pulse animation */
+.ghost-key-recording-active {
+  animation: recordingPulse 1s infinite;
+}
+
+@keyframes recordingPulse {
+  0%, 100% {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+  }
+  50% {
+    background: linear-gradient(135deg, #c82333, #a71e2a);
+    box-shadow: 0 0 0 8px rgba(220, 53, 69, 0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .ghost-key-modal-content {
+    width: 95%;
+    margin: 10px;
+  }
+  
+  .ghost-key-modal-header {
+    padding: 16px 20px;
+  }
+  
+  .ghost-key-modal-body {
+    padding: 20px;
+  }
+  
+  .ghost-key-modal-actions {
+    flex-direction: column;
+  }
+  
+  .ghost-key-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .ghost-key-message {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+}
+
+/* Dark mode compatibility */
+@media (prefers-color-scheme: dark) {
+  .ghost-key-modal-content {
+    background: linear-gradient(145deg, #0a0a0a, #1a1a1a);
+    border-color: #333;
+  }
+  
+  .ghost-key-message {
+    background: #0a0a0a;
+    border-color: #333;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .ghost-key-modal-content {
+    border: 2px solid #ffffff;
+    background: #000000;
+  }
+  
+  .ghost-key-btn {
+    border: 1px solid currentColor;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .ghost-key-modal,
+  .ghost-key-modal-content,
+  .ghost-key-message,
+  .ghost-key-progress-bar,
+  .ghost-key-indicator {
+    animation: none;
+    transition: none;
+  }
+  
+  .ghost-key-btn {
+    transition: none;
+  }
+} 
