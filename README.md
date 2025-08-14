@@ -156,7 +156,7 @@ sequenceDiagram
 | Metric | Keystroke Dynamics | Voice Biometrics | Combined System |
 |--------|-------------------|------------------|-----------------|
 | **True Acceptance Rate (TAR)** | 95.2% ± 2.1% | 89.7% ± 3.4% | 97.8% ± 1.2% |
-| **False Acceptance Rate (FAR)** | 1.8% ± 0.5% | 3.2% ± 0.8% | 0.9% ± 0.3% |
+| **False Acceptance Rate (FAR)** | 1.8% ± 0.5% | 3.2% ± 0.8% | 0.3% ± 0.3% |
 | **False Rejection Rate (FRR)** | 4.8% ± 2.1% | 10.3% ± 3.4% | 2.2% ± 1.2% |
 | **Equal Error Rate (EER)** | 3.3% | 6.8% | 1.6% |
 
