@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -34,7 +34,17 @@ export function VoiceAuthModal({ isOpen, onClose, username, onSuccess }: VoiceAu
     stopRecording,
     resetRecording,
     verifyVoice,
+    attachWaveform,
+    detachWaveform,
   } = useVoiceAuth()
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+
+  useEffect(() => {
+    if (isRecording && canvasRef.current) {
+      attachWaveform(canvasRef.current)
+      return () => detachWaveform()
+    }
+  }, [isRecording, attachWaveform, detachWaveform])
 
   const handleStartRecording = async () => {
     try {
@@ -160,6 +170,9 @@ export function VoiceAuthModal({ isOpen, onClose, username, onSuccess }: VoiceAu
 
             {/* Recording Controls */}
             <div className="space-y-4">
+              <div className="rounded-lg border border-cyan-500/30 bg-slate-800/30 p-2">
+                <canvas ref={canvasRef} width={600} height={120} className="w-full h-[120px]" />
+              </div>
               <div className="flex items-center justify-center">
                 <div className="relative">
                   <Button

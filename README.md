@@ -1,113 +1,109 @@
-# Ghost Key Universal - Chrome Extension
+# Ghost Key Mobile (Android via Capacitor) – Keystroke + Voice Biometrics
 
-A powerful biometric authentication extension that brings keystroke dynamics and voice biometrics to any website with login forms. Built as a standalone Chrome extension (Manifest V3) ported from the Ghost Key Next.js project.
+A production-ready Android application wrapping the Ghost Key Next.js biometric platform using Capacitor. It runs keystroke dynamics (autoencoder) and voice biometrics (Meyda MFCC + Web Audio API) fully on-device, with local storage, audit logs, and admin visualizations adapted for mobile.
 
 ## 🔒 Overview
 
-Ghost Key Universal provides **local biometric authentication** for web forms using:
-- **Keystroke Dynamics**: Analyzes your typing patterns and rhythm
-- **Voice Biometrics**: Optional voice verification as multi-factor authentication  
-- **Neural Network Processing**: Uses autoencoder for pattern recognition
-- **Local Storage Only**: No data sent to servers - everything stays on your device
+Ghost Key Mobile provides **local biometric authentication** using:
+- **Keystroke Dynamics**: Analyzes typing patterns and rhythm with the original autoencoder pipeline
+- **Voice Biometrics**: Optional voice verification (Meyda MFCC + spectral features)
+- **On-Device Processing**: All ML and feature extraction runs locally inside the Android WebView
+- **Local Storage**: Models, profiles, and logs stored in app sandbox (IndexedDB via WebView)
 
 ## ✨ Features
 
-### 🎯 Universal Compatibility
-- Works on **any website** with password fields
-- Automatic form detection and monitoring
-- Support for dynamic content and SPAs
-- Shadow DOM compatibility (where possible)
+### 🎯 Mobile-First Delivery
+- Distributed as an **Android APK** using Capacitor
+- Responsive UI for phones and tablets
+- Dark/Light themes with mobile haptics and animations
 
 ### 🔐 Biometric Security
-- **Keystroke Dynamics**: Measures typing speed, dwell time, flight time, and pressure patterns
-- **Voice Authentication**: MFCC feature extraction with similarity scoring
-- **Autoencoder Training**: Neural network learns your unique patterns
+- **Keystroke Dynamics**: Dwell, flight, dd/ud timings, speed, error-rate, pressure
+- **Voice Authentication**: MFCC, spectral, temporal, robust similarity
+- **Autoencoder Training**: Same NN pipeline as the web app (TensorFlow.js-compatible logic)
 - **Threshold-based Verification**: Configurable security levels
 
 ### 🛡️ Privacy-First Design
-- **100% Local Processing**: No cloud services or external servers
-- **Encrypted Storage**: HMAC signing for tamper detection
-- **No Raw Data Storage**: Only processed biometric templates stored
-- **User Control**: Clear all data anytime
+- **100% On-Device**: No cloud services
+- **Integrity Protection**: HMAC signing for tamper detection
+- **Controlled Retention**: Privacy mode to avoid raw vector storage
+- **Data Rights**: Clear/export data per GDPR/CCPA flows
 
 ### ⚙️ Smart Enrollment
-- **Automatic Detection**: Prompts enrollment for new users
-- **Progressive Training**: Requires 5 samples for robust models
+- **Guided Enrollment**: Keystroke and voice onboarding flows
+- **Progressive Training**: Requires multiple samples for robust models
 - **Data Augmentation**: Noise injection for better generalization
 - **Validation**: Feature integrity checks before storage
 
-## 🚀 Installation
+## 🚀 Android Build & Install
 
-### Method 1: Load as Unpacked Extension (Developer Mode)
+You can build without Android Studio using GitHub Actions or local CLI.
 
-1. **Download/Clone** this repository
-2. **Open Chrome** and navigate to `chrome://extensions/`
-3. **Enable Developer Mode** (toggle in top-right)
-4. **Click "Load unpacked"** and select the extension folder
-5. **Pin the extension** to your toolbar for easy access
+### Method 1: GitHub Actions (no Android Studio)
 
-### Method 2: Build and Install
+1. Push the repository to GitHub
+2. In GitHub → Actions → “Build Android APK” → Run workflow
+3. Download artifact `app-release-apk` → contains `app-release.apk`
+4. Install on device:
+   - Transfer and open the APK on your phone, or
+   - `adb install -r app-release.apk`
+
+### Method 2: Local CLI (Java 17 + Android SDK)
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd ghost-key-universal
+# From repo root
+npm ci
+npm run export
+npm run cap:sync
+cd android
+./gradlew assembleRelease
 
-# The extension is ready to load - no build step required
-# Just load the folder as an unpacked extension
+# Install on device (USB debugging enabled)
+adb install -r app/build/outputs/apk/release/app-release.apk
 ```
 
-## 📖 How It Works
+Permissions required (auto-included):
+- `RECORD_AUDIO`, `INTERNET`, `MODIFY_AUDIO_SETTINGS`
 
-### 1. Form Detection
-- Automatically scans pages for password fields
-- Uses multiple selectors to find login/registration forms
-- Monitors for dynamically added forms via MutationObserver
+## 📖 How It Works (Mobile)
 
-### 2. Keystroke Capture
-- Records timing between keydown/keyup events
-- Calculates hold times, dwell times, and flight times
-- Extracts statistical features (typing speed, rhythm, pressure)
+### 1. Keystroke Capture
+- Captures keydown/keyup timings from the in-app inputs
+- Calculates hold (dwell), dd (down-down), ud (up-down) timings
+- Derives typing speed, flight time, error rate, pressure
 
-### 3. Biometric Processing
-- **Training**: Uses autoencoder neural network to learn patterns
-- **Authentication**: Compares new samples against stored model
-- **Threshold**: Configurable sensitivity (default: 0.03 reconstruction error)
+### 2. Neural Processing
+- Autoencoder model trains on-device (TensorFlow.js-compatible logic)
+- Threshold selected from training errors (percentile-based)
+
+### 3. Voice Features
+- Web Audio API + Meyda for MFCC/spectral/temporal features
+- Robust similarity score; threshold configurable
 
 ### 4. Voice Verification (Optional)
-- Records 3-5 second voice samples
-- Extracts MFCC and spectral features using Meyda library
-- Compares against stored voice profile using cosine similarity
+- 3–5 second passphrase recording
+- Displays a live waveform visualizer while recording
+- Haptics on success/failure
 
 ## 🎮 Usage
 
 ### First Time Setup
 
-1. **Navigate** to any website with a login form
-2. **Enter credentials** - Ghost Key will detect the password field
-3. **Choose enrollment** when prompted for new users
-4. **Type password 5 times** to train your biometric model
-5. **Voice enrollment** (optional) for additional security
+1. Open the app and go to the authentication screen
+2. Register a username and passphrase; type the passphrase multiple times to train
+3. Complete voice enrollment (optional) with the guided flow
 
 ### Daily Use
 
-1. **Type your password** normally on any enrolled site
-2. **Ghost Key analyzes** your keystroke pattern automatically
-3. **Authentication happens** before form submission
-4. **Voice verification** prompts if keystroke fails (if enabled)
+1. Enter your username and passphrase in the app
+2. The model authenticates keystroke dynamics locally (<200ms typical)
+3. Voice verification prompts automatically after multiple failures
 
-### Managing the Extension
+### Managing the App
 
-#### Popup Interface
-- **Toggle per-site** enabling/disabling
-- **View enrolled users** count
-- **Quick actions** for enrollment and data clearing
-- **Security status** showing active features
-
-#### Settings (Options Page)
-- **Global settings**: Thresholds, sample requirements
-- **Privacy controls**: Data retention policies
-- **Advanced options**: Debug mode, feature toggles
+- **Admin Panel**: User list, data controls (delete/export), thresholds
+- **Audit Dashboard**: Success/failure logs, anomaly heatmaps, charts
+- **Privacy Controls**: Enable privacy mode to avoid raw vector storage
 
 ## ⚙️ Configuration
 
@@ -147,104 +143,95 @@ cd ghost-key-universal
 
 ### File Structure
 ```
-ghost-key-universal/
-├── manifest.json           # Extension manifest (V3)
-├── background.js           # Service worker (authentication logic)
-├── content.js             # Content script (form detection)
-├── popup.html/js          # Extension popup interface
-├── options.html/js        # Settings page
-├── libs/
-│   ├── storage.js         # IndexedDB + chrome.storage wrapper
-│   ├── autoencoder.js     # Neural network implementation
-│   ├── keystroke.js       # Keystroke analysis
-│   └── voice.js           # Voice biometrics (uses Meyda)
-└── styles/
-    ├── modal.css          # Modal and notification styles
-    └── popup.css          # Popup interface styles
+ghost_key/
+├── app/                  # Next.js app (UI, admin, dashboards)
+├── components/           # UI components (keystroke capture, voice modal, etc.)
+├── hooks/                # use-keystroke-analyzer, use-voice-auth
+├── lib/                  # runtime-api adapter (local vs /api routing)
+├── libs/                 # autoencoder.js and storage.js (IndexedDB)
+├── utils/                # voice-feature-extractor (Meyda + Web Audio API)
+├── capacitor.config.ts   # Capacitor config (webDir=out)
+├── android/              # Generated by `npx cap sync android`
+└── .github/workflows/    # android-release.yml (CI APK build)
 ```
 
 ### Data Flow
 
-1. **Content Script** detects forms and captures keystrokes
-2. **Background Script** processes features and runs authentication
-3. **Storage Layer** manages models in IndexedDB with HMAC signing
-4. **UI Components** provide user controls and feedback
+1. **Keystroke Capture**: in-app inputs → feature extraction
+2. **Autoencoder**: on-device NN training and thresholding
+3. **Voice Pipeline**: Meyda MFCC/spectral features + robust similarity
+4. **Runtime Adapter**: Uses local implementations on Android, `/api/*` on web
+5. **Storage Layer**: IndexedDB (HMAC integrity), app sandbox storage
 
 ### Storage Architecture
 
-- **Chrome Storage**: Small settings and preferences
-- **IndexedDB**: Large model data and training samples
-- **HMAC Verification**: Prevents tampering with stored biometric data
-- **Per-Origin Isolation**: Data scoped to website domains
+- **IndexedDB (WebView)**: Models, voice profiles, training samples
+- **HMAC Verification**: Prevents tampering
+- **Privacy Mode**: Avoids raw vector storage when enabled
 
 ## 🛡️ Security Considerations
 
 ### Threat Model Protection
 - ✅ **Replay Attacks**: Temporal variance in keystroke patterns
-- ✅ **Data Tampering**: HMAC signatures on all stored data  
-- ✅ **Privacy Invasion**: No raw passwords or audio stored
-- ✅ **Cross-Site Data**: Origin-based data isolation
+- ✅ **Data Tampering**: HMAC signatures on stored biometric data
+- ✅ **Privacy**: No raw passwords/audio stored; privacy mode available
+- ✅ **On-Device**: No network dependency for auth decisions
 
 ### Limitations
-- ⚠️ **Physical Access**: Extension data accessible to device owner
-- ⚠️ **Shared Computers**: Not suitable for public/shared machines
-- ⚠️ **Typing Injuries**: May affect authentication accuracy
-- ⚠️ **Background Noise**: Can impact voice authentication
+- ⚠️ **Physical Access**: Device owner can clear app data
+- ⚠️ **Typing Injuries**: May affect keystroke patterns
+- ⚠️ **Background Noise**: Impacts voice features
 
 ## 🎯 Performance
 
 ### Resource Usage
-- **Memory**: ~2-5MB per active tab with forms
-- **CPU**: Minimal impact (training ~1-2s, auth ~100ms)
-- **Storage**: ~50KB per user model, ~10KB per voice profile
-- **Network**: Zero - completely offline processing
+- **Latency**: Auth < 200ms typical on mid-range devices
+- **Training**: Seconds depending on sample count
+- **Storage**: ~50–200KB per user model (keystroke) + voice profile
+- **Network**: None for on-device flows
 
 ### Compatibility
-- **Chrome**: 88+ (Manifest V3 support)
-- **Edge**: 88+ (Chromium-based)
-- **Websites**: Universal (any site with password fields)
-- **Forms**: Standard HTML inputs, most JavaScript frameworks
+- **Android**: API 24+ (WebView with getUserMedia)
+- **Permissions**: RECORD_AUDIO, INTERNET
+- **Dark/Light**: Supported
+- **Haptics**: Via Capacitor Haptics
 
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
-**Extension Not Working**
-- Check if enabled in `chrome://extensions/`
-- Verify permissions are granted
-- Check browser console for errors
+**App Not Installing**
+- Enable “Install unknown apps” or use `adb install -r`
+- Ensure Android 7.0+ and USB debugging for ADB install
 
 **Authentication Failing**
-- Ensure consistent typing patterns
-- Check threshold settings in options
-- Re-enroll if typing style has changed significantly
+- Be consistent with the passphrase typing
+- Adjust thresholds if overly strict/lenient
+- Re-enroll after significant changes
 
 **Voice Issues**
-- Grant microphone permissions
-- Check browser microphone access
-- Ensure quiet environment for enrollment
+- Grant microphone permission on first launch
+- Record in a quiet environment
 
-**Form Not Detected**
-- Check if password field is visible and enabled
-- Try refreshing the page
-- Report non-standard form implementations
+**Waveform Not Visible**
+- Ensure recording is active; the canvas renders only when recording
 
 ### Debug Mode
-Enable in extension options for detailed console logging:
+Use browser devtools on the device/emulator to see:
 - Keystroke timing data
-- Feature extraction results  
+- Feature extraction results
 - Authentication decisions
 - Storage operations
 
 ## 📊 Analytics & Monitoring
 
-The extension tracks (locally only):
+The app tracks (locally only):
 - Authentication success/failure rates
 - Feature extraction quality metrics
 - Storage usage statistics
 - Performance timing data
 
-Access via popup → Statistics button.
+Access via the in-app Admin/Audit dashboards.
 
 ## 🤝 Contributing
 
@@ -268,7 +255,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - **Ghost Key Project**: Original Next.js implementation
 - **Meyda Library**: Audio feature extraction
-- **Chrome Extensions Team**: Manifest V3 architecture
+- **Capacitor**: Android packaging
 - **Biometric Research Community**: Keystroke dynamics algorithms
 
 ## 📞 Support
@@ -281,4 +268,4 @@ For issues, questions, or feature requests:
 
 ---
 
-**⚠️ Important**: This is a security-focused extension. Always review code before installation and use only on trusted devices. Biometric authentication supplements but doesn't replace strong passwords.
+**⚠️ Important**: This is a security-focused mobile app. Always review code before installation and use only on trusted devices. Biometric authentication supplements but doesn't replace strong passwords.

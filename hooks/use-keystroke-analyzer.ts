@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState, useCallback } from "react"
+import RuntimeAPI from "@/lib/runtime-api"
 
 interface KeystrokeEvent {
   key: string
@@ -127,62 +128,18 @@ export function useKeystrokeAnalyzer() {
   const trainModel = useCallback(
     async (username: string, features: ExtractedFeatures, sampleCount: number, privacyMode: boolean) => {
       try {
-        const response = await fetch("/api/train-model", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username,
-            features: features.features,
-            holdTimes: features.holdTimes,
-            ddTimes: features.ddTimes,
-            udTimes: features.udTimes,
-            additionalFeatures: {
-              typingSpeed: features.typingSpeed,
-              flightTime: features.flightTime,
-              errorRate: features.errorRate,
-              pressPressure: features.pressPressure,
-            },
-            sampleCount,
-            privacyMode,
-            rawData: privacyMode ? null : keystrokeData,
-          }),
-        })
-
-        const result = await response.json()
-        return result.success
+        return await RuntimeAPI.trainModel(username, features as any, sampleCount, privacyMode)
       } catch (error) {
         console.error("Training failed:", error)
         return false
       }
     },
-    [keystrokeData],
+    [],
   )
 
   const authenticate = useCallback(async (username: string, features: ExtractedFeatures, password: string) => {
     try {
-      console.log("Authenticating user:", username)
-      console.log("Features:", features.features.slice(0, 5), "...")
-
-      const response = await fetch("/api/authenticate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username,
-          features: features.features,
-          holdTimes: features.holdTimes,
-          ddTimes: features.ddTimes,
-          udTimes: features.udTimes,
-          typingSpeed: features.typingSpeed,
-          flightTime: features.flightTime,
-          errorRate: features.errorRate,
-          pressPressure: features.pressPressure,
-          password,
-        }),
-      })
-
-      const result = await response.json()
-      console.log("Authentication result:", result)
-      return result
+      return await RuntimeAPI.authenticate(username, features as any, password)
     } catch (error) {
       console.error("Authentication failed:", error)
       return { success: false, authenticated: false, mse: 0, deviations: [] }

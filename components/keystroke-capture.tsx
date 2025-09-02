@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { Shield, Lock, Key, Fingerprint, Cpu, Volume2 } from "lucide-react"
+import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics"
 import { useKeystrokeAnalyzer } from "@/hooks/use-keystroke-analyzer"
 import { AnomalyHeatmap } from "./anomaly-heatmap"
 import { VoiceRegistration } from "./voice-registration"
@@ -68,14 +69,8 @@ const [initialPassword, setInitialPassword] = useState<string | null>(null)
     try {
       const features = extractFeatures(keystrokeData)
 
-      // Call the authenticate API directly
-      const response = await fetch("/api/authenticate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, features, password }),
-      })
-
-      const authResult = await response.json()
+      // Use hook's authenticate which now uses RuntimeAPI (local on-device in Capacitor)
+      const authResult = await authenticate(username, features, password)
       console.log("Auth result:", authResult)
 
       // Handle the response based on the actual API structure
@@ -84,6 +79,7 @@ const [initialPassword, setInitialPassword] = useState<string | null>(null)
           type: "success",
           message: `✅ AUTHENTICATION SUCCESSFUL\nBiometric Error: ${(authResult.reconstructionError || 0).toFixed(5)}\n🛡️ ACCESS GRANTED`,
         })
+        try { await Haptics.impact({ style: ImpactStyle.Heavy }) } catch {}
         setHeatmapData(authResult.deviations || [])
         setShowHeatmap(true)
         setFailedAttempts(0) // Reset failed attempts on success
@@ -98,6 +94,7 @@ const [initialPassword, setInitialPassword] = useState<string | null>(null)
           type: "error",
           message: `❌ AUTHENTICATION FAILED (Attempt ${newFailedAttempts}/2)\nBiometric Error: ${(authResult.reconstructionError || 0).toFixed(5)}\n🚫 ACCESS DENIED\nReason: ${authResult.reason || "Authentication failed"}`,
         })
+        try { await Haptics.notification({ type: NotificationType.ERROR }) } catch {}
         setHeatmapData(authResult.deviations || [])
         setShowHeatmap(true)
 
