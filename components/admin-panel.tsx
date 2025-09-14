@@ -1,5 +1,6 @@
 "use client"
 
+// Admin panel for system management - probably need better auth than hardcoded password
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Shield, Download, Trash2, Terminal, Server, UserX, Users, AlertTriangle } from "lucide-react"
 
+// User interface for the user list
 interface User {
   username: string
   hasKeystrokeModel: boolean
@@ -17,48 +19,56 @@ interface User {
 }
 
 export function AdminPanel() {
-  const [password, setPassword] = useState("")
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [error, setError] = useState("")
-  const [users, setUsers] = useState<string[]>([])
-  const [selectedUser, setSelectedUser] = useState("")
-  const [deleteLoading, setDeleteLoading] = useState(false)
-  const [deleteResult, setDeleteResult] = useState<any>(null)
+  // Authentication state for admin access
+  const [adminPassword, setAdminPassword] = useState("")
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
+  const [loginError, setLoginError] = useState("")
+  
+  // User management state
+  const [registeredUsers, setRegisteredUsers] = useState<string[]>([])
+  const [targetUser, setTargetUser] = useState("")
+  const [isDeletingUser, setIsDeletingUser] = useState(false)
+  const [deletionResult, setDeletionResult] = useState<any>(null)
 
+  // Fetch user list when admin is authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchUsers()
+    if (isAdminAuthenticated) {
+      loadUserList()
     }
-  }, [isAuthenticated])
+  }, [isAdminAuthenticated])
 
-  const adminLogin = () => {
-    if (password === "admin123") {
-      setIsAuthenticated(true)
-      setError("")
+  // Simple admin authentication - TODO: implement proper auth system
+  const authenticateAdmin = () => {
+    if (adminPassword === "admin123") {
+      setIsAdminAuthenticated(true)
+      setLoginError("")
     } else {
-      setError("Invalid admin credentials")
+      setLoginError("Invalid admin credentials")
     }
   }
 
-  const fetchUsers = async () => {
+  // Load the list of registered users from the API
+  const loadUserList = async () => {
     try {
       const response = await fetch("/api/list-users")
       const data = await response.json()
-      setUsers(data.users || [])
+      setRegisteredUsers(data.users || [])
     } catch (error) {
       console.error("Failed to fetch users:", error)
     }
   }
 
-  const deleteUserData = async () => {
-    if (!selectedUser) {
-      setError("Please select a user to delete")
+  // Permanently delete all user data - this is the nuclear option
+  const permanentlyDeleteUser = async () => {
+    if (!targetUser) {
+      setLoginError("Please select a user to delete")
       return
     }
 
+    // Extra confirmation dialog because this is destructive
     const confirmMessage = `⚠️ CRITICAL WARNING ⚠️
 
-This will PERMANENTLY DELETE ALL DATA for user: ${selectedUser}
+This will PERMANENTLY DELETE ALL DATA for user: ${targetUser}
 
 This includes:
 • All trained keystroke models
@@ -69,47 +79,48 @@ This includes:
 
 This action CANNOT be undone!
 
-Type the username "${selectedUser}" to confirm:`
+Type the username "${targetUser}" to confirm:`
 
-    const confirmation = prompt(confirmMessage)
+    const userConfirmation = prompt(confirmMessage)
 
-    if (confirmation !== selectedUser) {
+    if (userConfirmation !== targetUser) {
       alert("❌ Deletion cancelled - username confirmation did not match")
       return
     }
 
-    setDeleteLoading(true)
-    setDeleteResult(null)
-    setError("")
+    setIsDeletingUser(true)
+    setDeletionResult(null)
+    setLoginError("")
 
     try {
       const response = await fetch("/api/delete-user-data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username: selectedUser,
-          adminPassword: password,
+          username: targetUser,
+          adminPassword: adminPassword,
         }),
       })
 
       const result = await response.json()
-      setDeleteResult(result)
+      setDeletionResult(result)
 
       if (result.success) {
-        alert(`✅ Successfully deleted all data for user: ${selectedUser}`)
-        setSelectedUser("")
-        fetchUsers() // Refresh user list
+        alert(`✅ Successfully deleted all data for user: ${targetUser}`)
+        setTargetUser("")
+        loadUserList() // Refresh the user list
       } else {
-        setError(result.message || "Failed to delete user data")
+        setLoginError(result.message || "Failed to delete user data")
       }
     } catch (error) {
-      setError("Failed to delete user data: " + error)
+      setLoginError("Failed to delete user data: " + error)
     } finally {
-      setDeleteLoading(false)
+      setIsDeletingUser(false)
     }
   }
 
-  const clearLogs = async () => {
+  // Clear all security logs - another dangerous operation
+  const purgeSecurityLogs = async () => {
     if (confirm("⚠️ WARNING: This will permanently delete all security logs. Continue?")) {
       try {
         await fetch("/api/clear-logs", { method: "POST" })
@@ -120,24 +131,26 @@ Type the username "${selectedUser}" to confirm:`
     }
   }
 
-  const exportAllData = async () => {
+  // Export all system data for backup purposes
+  const exportSystemData = async () => {
     try {
       const response = await fetch("/api/export-all-data")
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `keystroke_auth_export_${new Date().toISOString().split("T")[0]}.zip`
-      document.body.appendChild(a)
-      a.click()
+      const downloadLink = document.createElement("a")
+      downloadLink.href = url
+      downloadLink.download = `keystroke_auth_export_${new Date().toISOString().split("T")[0]}.zip`
+      document.body.appendChild(downloadLink)
+      downloadLink.click()
       window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
+      document.body.removeChild(downloadLink)
     } catch (error) {
       alert("❌ Failed to export data: " + error)
     }
   }
 
-  if (!isAuthenticated) {
+  // Show login screen if admin hasn't authenticated yet
+  if (!isAdminAuthenticated) {
     return (
       <Card className="bg-slate-800/50 dark:bg-slate-900/50 border-slate-700/50 dark:border-slate-600/50 shadow-2xl backdrop-blur-sm">
         <CardHeader
@@ -164,23 +177,23 @@ Type the username "${selectedUser}" to confirm:`
             <Input
               id="admin-password"
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && adminLogin()}
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && authenticateAdmin()}
               placeholder="Enter admin password"
               className="bg-slate-700/50 dark:bg-slate-800/50 border-slate-600/50 dark:border-slate-700/50 text-slate-200 placeholder:text-slate-500 focus:border-purple-500/50 dark:focus:border-purple-400/50 transition-all duration-300"
             />
             <p className="text-xs text-slate-500">Default: admin123 (for demo purposes only)</p>
           </div>
 
-          {error && (
+          {loginError && (
             <Alert className="border-red-500/50 bg-red-500/10 text-red-300 dark:text-red-400">
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{loginError}</AlertDescription>
             </Alert>
           )}
 
           <Button
-            onClick={adminLogin}
+            onClick={authenticateAdmin}
             className="w-full bg-gradient-to-r from-purple-600/80 to-purple-700/80 hover:from-purple-500 hover:to-purple-600 border border-purple-500/50 text-white shadow-lg hover:shadow-xl transform hover:scale-[1.02] font-medium backdrop-blur-sm"
           >
             <Shield className="w-4 h-4 mr-2" />
@@ -215,49 +228,49 @@ Type the username "${selectedUser}" to confirm:`
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-slate-300">Select User to Delete</Label>
-              <Select value={selectedUser} onValueChange={setSelectedUser}>
+              <Select value={targetUser} onValueChange={setTargetUser}>
                 <SelectTrigger className="bg-slate-700/50 border-slate-600/50 text-slate-200">
                   <SelectValue placeholder="Choose user..." />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-800 border-slate-600">
-                  {users.map((user) => (
+                  {registeredUsers.map((user) => (
                     <SelectItem key={user} value={user} className="text-slate-200 hover:bg-slate-700">
                       {user}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-slate-500">Found {users.length} registered users</p>
+              <p className="text-xs text-slate-500">Found {registeredUsers.length} registered users</p>
             </div>
 
             <div className="flex items-end">
               <Button
-                onClick={deleteUserData}
-                disabled={!selectedUser || deleteLoading}
+                onClick={permanentlyDeleteUser}
+                disabled={!targetUser || isDeletingUser}
                 className="w-full bg-gradient-to-r from-red-600/80 to-red-700/80 hover:from-red-500 hover:to-red-600 border border-red-500/50 text-white font-medium"
               >
                 <UserX className="w-4 h-4 mr-2" />
-                {deleteLoading ? "Deleting..." : "🗑️ DELETE ALL USER DATA"}
+                {isDeletingUser ? "Deleting..." : "🗑️ DELETE ALL USER DATA"}
               </Button>
             </div>
           </div>
 
-          {deleteResult && (
+          {deletionResult && (
             <Alert
-              className={`border-${deleteResult.success ? "green" : "red"}-500/50 bg-${deleteResult.success ? "green" : "red"}-500/10`}
+              className={`border-${deletionResult.success ? "green" : "red"}-500/50 bg-${deletionResult.success ? "green" : "red"}-500/10`}
             >
               <AlertTriangle className="w-4 h-4" />
-              <AlertDescription className={`text-${deleteResult.success ? "green" : "red"}-300`}>
-                <div className="font-medium">{deleteResult.message}</div>
-                {deleteResult.deletionResults && (
+              <AlertDescription className={`text-${deletionResult.success ? "green" : "red"}-300`}>
+                <div className="font-medium">{deletionResult.message}</div>
+                {deletionResult.deletionResults && (
                   <div className="mt-2 text-sm">
                     <div>
-                      ✅ Keystroke Models: {deleteResult.deletionResults.keystrokeModels ? "Deleted" : "Not Found"}
+                      ✅ Keystroke Models: {deletionResult.deletionResults.keystrokeModels ? "Deleted" : "Not Found"}
                     </div>
-                    <div>✅ Voice Models: {deleteResult.deletionResults.voiceModels ? "Deleted" : "Not Found"}</div>
-                    <div>✅ Auth Logs: {deleteResult.deletionResults.authLogs ? "Cleaned" : "Not Found"}</div>
-                    {deleteResult.deletionResults.errors.length > 0 && (
-                      <div className="mt-1 text-red-400">Errors: {deleteResult.deletionResults.errors.join(", ")}</div>
+                    <div>✅ Voice Models: {deletionResult.deletionResults.voiceModels ? "Deleted" : "Not Found"}</div>
+                    <div>✅ Auth Logs: {deletionResult.deletionResults.authLogs ? "Cleaned" : "Not Found"}</div>
+                    {deletionResult.deletionResults.errors.length > 0 && (
+                      <div className="mt-1 text-red-400">Errors: {deletionResult.deletionResults.errors.join(", ")}</div>
                     )}
                   </div>
                 )}
@@ -304,7 +317,7 @@ Type the username "${selectedUser}" to confirm:`
         <CardContent className="space-y-4 p-6 bg-slate-800/30 dark:bg-slate-900/30">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Button
-              onClick={exportAllData}
+              onClick={exportSystemData}
               className="flex items-center gap-2 bg-blue-600/80 hover:bg-blue-500 border border-blue-500/50"
             >
               <Download className="w-4 h-4" />
@@ -312,7 +325,7 @@ Type the username "${selectedUser}" to confirm:`
             </Button>
 
             <Button
-              onClick={clearLogs}
+              onClick={purgeSecurityLogs}
               variant="destructive"
               className="flex items-center gap-2 bg-red-600/80 hover:bg-red-500 border border-red-500/50"
             >
@@ -324,10 +337,10 @@ Type the username "${selectedUser}" to confirm:`
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <Button
               className="flex items-center gap-2 bg-purple-600/80 hover:bg-purple-500 border border-purple-500/50"
-              onClick={fetchUsers}
+              onClick={loadUserList}
             >
               <Users className="w-4 h-4" />
-              Refresh User List ({users.length})
+              Refresh User List ({registeredUsers.length})
             </Button>
 
             <Button
@@ -358,7 +371,7 @@ Type the username "${selectedUser}" to confirm:`
               <div className="text-sm text-slate-400">System Status</div>
             </div>
             <div className="p-4 bg-slate-700/30 dark:bg-slate-800/30 rounded-lg border border-slate-600/30 dark:border-slate-700/30">
-              <div className="text-2xl font-bold text-cyan-400">{users.length}</div>
+              <div className="text-2xl font-bold text-cyan-400">{registeredUsers.length}</div>
               <div className="text-sm text-slate-400">Registered Users</div>
             </div>
             <div className="p-4 bg-slate-700/30 dark:bg-slate-800/30 rounded-lg border border-slate-600/30 dark:border-slate-700/30">

@@ -1,6 +1,7 @@
 "use client"
 
-// Inspired by react-hot-toast library
+// Toast notification system - heavily inspired by react-hot-toast library
+// Handles temporary notification messages throughout the app
 import * as React from "react"
 
 import type {
@@ -8,9 +9,11 @@ import type {
   ToastProps,
 } from "@/components/ui/toast"
 
-const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+// Configuration constants
+const TOAST_LIMIT = 1 // Maximum number of toasts visible at once
+const TOAST_REMOVE_DELAY = 1000000 // How long to wait before removing dismissed toasts
 
+// Enhanced toast interface with additional properties
 type ToasterToast = ToastProps & {
   id: string
   title?: React.ReactNode
@@ -18,6 +21,7 @@ type ToasterToast = ToastProps & {
   action?: ToastActionElement
 }
 
+// Action types for toast state management
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",
   UPDATE_TOAST: "UPDATE_TOAST",
@@ -25,11 +29,12 @@ const actionTypes = {
   REMOVE_TOAST: "REMOVE_TOAST",
 } as const
 
-let count = 0
+// Simple counter for generating unique toast IDs
+let toastIdCounter = 0
 
-function genId() {
-  count = (count + 1) % Number.MAX_SAFE_INTEGER
-  return count.toString()
+function generateToastId() {
+  toastIdCounter = (toastIdCounter + 1) % Number.MAX_SAFE_INTEGER
+  return toastIdCounter.toString()
 }
 
 type ActionType = typeof actionTypes
@@ -56,11 +61,12 @@ interface State {
   toasts: ToasterToast[]
 }
 
+// Timeout management for auto-dismissing toasts
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
 const addToRemoveQueue = (toastId: string) => {
   if (toastTimeouts.has(toastId)) {
-    return
+    return // Already queued for removal
   }
 
   const timeout = setTimeout(() => {
@@ -140,10 +146,16 @@ function dispatch(action: Action) {
   })
 }
 
+// Generate unique ID for toast notifications
+let toastCount = 0
+function createUniqueToastId() {
+  return `toast-${++toastCount}`
+}
+
 type Toast = Omit<ToasterToast, "id">
 
 function toast({ ...props }: Toast) {
-  const id = genId()
+  const id = createUniqueToastId()
 
   const update = (props: ToasterToast) =>
     dispatch({

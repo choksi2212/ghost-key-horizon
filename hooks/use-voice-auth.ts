@@ -1,10 +1,12 @@
 "use client"
 
+// Custom hook for voice biometric authentication - handles recording, processing, and verification
 import { useState, useRef, useCallback } from "react"
 import { processVoiceAudio } from "@/utils/voice-feature-extractor"
 import RuntimeAPI from "@/lib/runtime-api"
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics"
 
+// TypeScript interface for the voice authentication hook
 interface VoiceAuthHook {
   isRecording: boolean
   audioBlob: Blob | null
@@ -18,98 +20,114 @@ interface VoiceAuthHook {
   resetRecording: () => void
   registerVoice: (username: string, samples: Blob[]) => Promise<boolean>
   verifyVoice: (username: string, sample: Blob) => Promise<boolean>
+  attachWaveform: (canvas: HTMLCanvasElement) => void
+  detachWaveform: () => void
 }
 
 export function useVoiceAuth(): VoiceAuthHook {
-  const [isRecording, setIsRecording] = useState(false)
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
-  const [audioUrl, setAudioUrl] = useState<string | null>(null)
-  const [recordingTime, setRecordingTime] = useState(0)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [processingProgress, setProcessingProgress] = useState(0)
-  const [extractedFeatures, setExtractedFeatures] = useState<any>(null)
+  // Core recording state management
+  const [isCurrentlyRecording, setIsCurrentlyRecording] = useState(false)
+  const [capturedAudioBlob, setCapturedAudioBlob] = useState<Blob | null>(null)
+  const [generatedAudioUrl, setGeneratedAudioUrl] = useState<string | null>(null)
+  const [recordingDuration, setRecordingDuration] = useState(0)
+  
+  // Audio processing state
+  const [isProcessingAudio, setIsProcessingAudio] = useState(false)
+  const [currentProcessingProgress, setCurrentProcessingProgress] = useState(0)
+  const [voiceFeatures, setVoiceFeatures] = useState<any>(null)
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const streamRef = useRef<MediaStream | null>(null)
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const audioContextRef = useRef<AudioContext | null>(null)
-  const analyserRef = useRef<AnalyserNode | null>(null)
-  const rafRef = useRef<number | null>(null)
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  // Refs for managing recording infrastructure
+  const mediaRecorderInstance = useRef<MediaRecorder | null>(null)
+  const microphoneStream = useRef<MediaStream | null>(null)
+  const recordingTimer = useRef<NodeJS.Timeout | null>(null)
+  
+  // Audio visualization refs
+  const audioContextInstance = useRef<AudioContext | null>(null)
+  const audioAnalyser = useRef<AnalyserNode | null>(null)
+  const animationFrame = useRef<number | null>(null)
+  const visualizationCanvas = useRef<HTMLCanvasElement | null>(null)
 
-  const startRecording = useCallback(async () => {
+  // Start voice recording with high-quality audio settings
+  const beginRecording = useCallback(async () => {
     try {
+      // Haptic feedback to indicate recording start
       await Haptics.selectionStart().catch(() => {})
-      const stream = await navigator.mediaDevices.getUserMedia({
+      
+      // Request microphone access with optimal settings for voice recognition
+      const micStream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 44100,
+          echoCancellation: true, // Remove echo for cleaner voice samples
+          noiseSuppression: true, // Reduce background noise
+          sampleRate: 44100, // High quality audio sampling
         },
       })
 
-      streamRef.current = stream
+      microphoneStream.current = micStream
 
-      const mediaRecorder = new MediaRecorder(stream, {
+      // Set up MediaRecorder with WebM format for better compression
+      const recorder = new MediaRecorder(micStream, {
         mimeType: "audio/webm;codecs=opus",
       })
 
-      mediaRecorderRef.current = mediaRecorder
+      mediaRecorderInstance.current = recorder
 
-      const chunks: BlobPart[] = []
+      const audioChunks: BlobPart[] = []
 
-      mediaRecorder.ondataavailable = (event) => {
+      // Handle audio data collection during recording
+      recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          chunks.push(event.data)
+          audioChunks.push(event.data)
         }
       }
 
-      mediaRecorder.onstop = async () => {
-        const blob = new Blob(chunks, { type: "audio/webm;codecs=opus" })
-        setAudioBlob(blob)
-        setAudioUrl(URL.createObjectURL(blob))
+      // Process the recorded audio when recording stops
+      recorder.onstop = async () => {
+        const finalAudioBlob = new Blob(audioChunks, { type: "audio/webm;codecs=opus" })
+        setCapturedAudioBlob(finalAudioBlob)
+        setGeneratedAudioUrl(URL.createObjectURL(finalAudioBlob))
 
-        // Stop all tracks
-        stream.getTracks().forEach((track) => track.stop())
+        // Clean up microphone stream
+        micStream.getTracks().forEach((track) => track.stop())
 
-        // Tear down visualizer
-        if (rafRef.current) {
-          cancelAnimationFrame(rafRef.current)
-          rafRef.current = null
+        // Clean up visualization components
+        if (animationFrame.current) {
+          cancelAnimationFrame(animationFrame.current)
+          animationFrame.current = null
         }
-        if (analyserRef.current) {
-          analyserRef.current.disconnect()
-          analyserRef.current = null
+        if (audioAnalyser.current) {
+          audioAnalyser.current.disconnect()
+          audioAnalyser.current = null
         }
-        if (audioContextRef.current) {
-          audioContextRef.current.close().catch(() => {})
-          audioContextRef.current = null
+        if (audioContextInstance.current) {
+          audioContextInstance.current.close().catch(() => {})
+          audioContextInstance.current = null
         }
 
-        // Extract features immediately
+        // Extract voice features for biometric analysis
         try {
-          setIsProcessing(true)
-          setProcessingProgress(20)
+          setIsProcessingAudio(true)
+          setCurrentProcessingProgress(20)
 
-          const { features } = await processVoiceAudio(blob)
-          setExtractedFeatures(features)
-          setProcessingProgress(100)
+          const { features } = await processVoiceAudio(finalAudioBlob)
+          setVoiceFeatures(features)
+          setCurrentProcessingProgress(100)
         } catch (error) {
-          console.error("Failed to extract features:", error)
-          setExtractedFeatures(null)
+          console.error("Failed to extract voice features:", error)
+          setVoiceFeatures(null)
         } finally {
-          setIsProcessing(false)
-          setTimeout(() => setProcessingProgress(0), 1000)
+          setIsProcessingAudio(false)
+          setTimeout(() => setCurrentProcessingProgress(0), 1000)
         }
       }
 
-      mediaRecorder.start()
-      setIsRecording(true)
-      setRecordingTime(0)
+      // Start the actual recording
+      recorder.start()
+      setIsCurrentlyRecording(true)
+      setRecordingDuration(0)
 
-      // Start timer
-      timerRef.current = setInterval(() => {
-        setRecordingTime((prev) => prev + 1)
+      // Start timing the recording duration
+      recordingTimer.current = setInterval(() => {
+        setRecordingDuration((prevTime) => prevTime + 1)
       }, 1000)
     } catch (error) {
       console.error("Error accessing microphone:", error)
@@ -117,146 +135,153 @@ export function useVoiceAuth(): VoiceAuthHook {
     }
   }, [])
 
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop()
-      setIsRecording(false)
+  // Stop the current recording session
+  const endRecording = useCallback(() => {
+    if (mediaRecorderInstance.current && isCurrentlyRecording) {
+      mediaRecorderInstance.current.stop()
+      setIsCurrentlyRecording(false)
 
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
-        timerRef.current = null
+      if (recordingTimer.current) {
+        clearInterval(recordingTimer.current)
+        recordingTimer.current = null
       }
     }
-  }, [isRecording])
+  }, [isCurrentlyRecording])
 
-  const resetRecording = useCallback(() => {
-    setAudioBlob(null)
-    setExtractedFeatures(null)
-    if (audioUrl) {
-      URL.revokeObjectURL(audioUrl)
-      setAudioUrl(null)
+  // Reset recording state for new session
+  const clearRecording = useCallback(() => {
+    setCapturedAudioBlob(null)
+    setVoiceFeatures(null)
+    if (generatedAudioUrl) {
+      URL.revokeObjectURL(generatedAudioUrl)
+      setGeneratedAudioUrl(null)
     }
-    setRecordingTime(0)
-  }, [audioUrl])
+    setRecordingDuration(0)
+  }, [generatedAudioUrl])
 
-  const registerVoice = useCallback(async (username: string, samples: Blob[]): Promise<boolean> => {
+  // Register voice biometric profile for a user
+  const enrollVoiceProfile = useCallback(async (username: string, voiceSamples: Blob[]): Promise<boolean> => {
     try {
-      setIsProcessing(true)
-      setProcessingProgress(0)
-      const ok = await RuntimeAPI.voiceRegister(username, samples)
-      setProcessingProgress(100)
-      if (ok) await Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {})
-      return ok
+      setIsProcessingAudio(true)
+      setCurrentProcessingProgress(0)
+      const registrationSuccessful = await RuntimeAPI.voiceRegister(username, voiceSamples)
+      setCurrentProcessingProgress(100)
+      if (registrationSuccessful) await Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {})
+      return registrationSuccessful
     } catch (error) {
       console.error("Voice registration failed:", error)
-      await Haptics.notification({ type: NotificationType.ERROR }).catch(() => {})
+      await Haptics.notification({ type: NotificationType.Error }).catch(() => {})
       return false
     } finally {
-      setIsProcessing(false)
-      setProcessingProgress(0)
+      setIsProcessingAudio(false)
+      setCurrentProcessingProgress(0)
     }
   }, [])
 
-  const verifyVoice = useCallback(async (username: string, sample: Blob): Promise<boolean> => {
+  // Verify voice against stored biometric profile
+  const authenticateVoice = useCallback(async (username: string, voiceSample: Blob): Promise<boolean> => {
     try {
-      setIsProcessing(true)
-      setProcessingProgress(30)
-      const ok = await RuntimeAPI.voiceVerify(username, sample)
-      setProcessingProgress(100)
-      if (ok) {
+      setIsProcessingAudio(true)
+      setCurrentProcessingProgress(30)
+      const verificationSuccessful = await RuntimeAPI.voiceVerify(username, voiceSample)
+      setCurrentProcessingProgress(100)
+      if (verificationSuccessful) {
         await Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {})
       } else {
-        await Haptics.notification({ type: NotificationType.ERROR }).catch(() => {})
+        await Haptics.notification({ type: NotificationType.Error }).catch(() => {})
       }
-      return ok
+      return verificationSuccessful
     } catch (error) {
       console.error("Voice verification failed:", error)
-      await Haptics.notification({ type: NotificationType.ERROR }).catch(() => {})
+      await Haptics.notification({ type: NotificationType.Error }).catch(() => {})
       return false
     } finally {
-      setIsProcessing(false)
-      setProcessingProgress(0)
+      setIsProcessingAudio(false)
+      setCurrentProcessingProgress(0)
     }
   }, [])
 
-  const attachWaveform = useCallback((canvas: HTMLCanvasElement | null) => {
-    canvasRef.current = canvas
-    if (!canvas || !streamRef.current) return
+  // Set up real-time waveform visualization during recording
+  const setupWaveformVisualization = useCallback((canvas: HTMLCanvasElement | null) => {
+    visualizationCanvas.current = canvas
+    if (!canvas || !microphoneStream.current) return
 
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-      audioContextRef.current = audioContext
-      const source = audioContext.createMediaStreamSource(streamRef.current)
-      const analyser = audioContext.createAnalyser()
-      analyser.fftSize = 2048
-      analyserRef.current = analyser
-      source.connect(analyser)
+      audioContextInstance.current = audioContext
+      const audioSource = audioContext.createMediaStreamSource(microphoneStream.current)
+      const frequencyAnalyser = audioContext.createAnalyser()
+      frequencyAnalyser.fftSize = 2048
+      audioAnalyser.current = frequencyAnalyser
+      audioSource.connect(frequencyAnalyser)
 
-      const bufferLength = analyser.frequencyBinCount
-      const dataArray = new Uint8Array(bufferLength)
-      const ctx = canvas.getContext("2d")
-      if (!ctx) return
+      const bufferLength = frequencyAnalyser.frequencyBinCount
+      const audioDataArray = new Uint8Array(bufferLength)
+      const canvasContext = canvas.getContext("2d")
+      if (!canvasContext) return
 
-      const draw = () => {
-        if (!analyserRef.current || !canvasRef.current) return
-        analyserRef.current.getByteTimeDomainData(dataArray)
+      // Animation loop for real-time waveform visualization
+      const drawWaveform = () => {
+        if (!audioAnalyser.current || !visualizationCanvas.current) return
+        audioAnalyser.current.getByteTimeDomainData(audioDataArray)
 
-        const width = canvasRef.current.width
-        const height = canvasRef.current.height
-        ctx.clearRect(0, 0, width, height)
-        ctx.fillStyle = "rgba(15,23,42,0.6)"
-        ctx.fillRect(0, 0, width, height)
-        ctx.lineWidth = 2
-        ctx.strokeStyle = "#22d3ee"
-        ctx.beginPath()
-        const sliceWidth = (width * 1.0) / bufferLength
+        const canvasWidth = visualizationCanvas.current.width
+        const canvasHeight = visualizationCanvas.current.height
+        canvasContext.clearRect(0, 0, canvasWidth, canvasHeight)
+        canvasContext.fillStyle = "rgba(15,23,42,0.6)" // Dark background
+        canvasContext.fillRect(0, 0, canvasWidth, canvasHeight)
+        canvasContext.lineWidth = 2
+        canvasContext.strokeStyle = "#22d3ee" // Cyan waveform
+        canvasContext.beginPath()
+        const sliceWidth = (canvasWidth * 1.0) / bufferLength
         let x = 0
         for (let i = 0; i < bufferLength; i++) {
-          const v = dataArray[i] / 128.0
-          const y = (v * height) / 2
-          if (i === 0) ctx.moveTo(x, y)
-          else ctx.lineTo(x, y)
+          const v = audioDataArray[i] / 128.0
+          const y = (v * canvasHeight) / 2
+          if (i === 0) canvasContext.moveTo(x, y)
+          else canvasContext.lineTo(x, y)
           x += sliceWidth
         }
-        ctx.lineTo(width, height / 2)
-        ctx.stroke()
-        rafRef.current = requestAnimationFrame(draw)
+        canvasContext.lineTo(canvasWidth, canvasHeight / 2)
+        canvasContext.stroke()
+        animationFrame.current = requestAnimationFrame(drawWaveform)
       }
-      draw()
+      drawWaveform()
     } catch (e) {
-      // ignore visualizer errors
+      // Ignore visualization errors - they're not critical for functionality
     }
   }, [])
 
-  const detachWaveform = useCallback(() => {
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current)
-      rafRef.current = null
+  // Clean up waveform visualization
+  const cleanupWaveformVisualization = useCallback(() => {
+    if (animationFrame.current) {
+      cancelAnimationFrame(animationFrame.current)
+      animationFrame.current = null
     }
-    if (analyserRef.current) {
-      analyserRef.current.disconnect()
-      analyserRef.current = null
+    if (audioAnalyser.current) {
+      audioAnalyser.current.disconnect()
+      audioAnalyser.current = null
     }
-    if (audioContextRef.current) {
-      audioContextRef.current.close().catch(() => {})
-      audioContextRef.current = null
+    if (audioContextInstance.current) {
+      audioContextInstance.current.close().catch(() => {})
+      audioContextInstance.current = null
     }
   }, [])
 
   return {
-    isRecording,
-    audioBlob,
-    audioUrl,
-    recordingTime,
-    isProcessing,
-    processingProgress,
-    extractedFeatures,
-    startRecording,
-    stopRecording,
-    resetRecording,
-    registerVoice,
-    verifyVoice,
-    attachWaveform,
-    detachWaveform,
+    isRecording: isCurrentlyRecording,
+    audioBlob: capturedAudioBlob,
+    audioUrl: generatedAudioUrl,
+    recordingTime: recordingDuration,
+    isProcessing: isProcessingAudio,
+    processingProgress: currentProcessingProgress,
+    extractedFeatures: voiceFeatures,
+    startRecording: beginRecording,
+    stopRecording: endRecording,
+    resetRecording: clearRecording,
+    registerVoice: enrollVoiceProfile,
+    verifyVoice: authenticateVoice,
+    attachWaveform: setupWaveformVisualization,
+    detachWaveform: cleanupWaveformVisualization,
   }
 }

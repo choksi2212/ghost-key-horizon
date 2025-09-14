@@ -2,24 +2,24 @@
   "compilerOptions": {
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
-    "target": "ES6",
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
+    "target": "ES6", // ES6 provides good compatibility while supporting modern features
+    "skipLibCheck": true, // Skip type checking of declaration files for faster builds
+    "strict": true, // Enable all strict type checking options - helps catch bugs early
+    "noEmit": true, // Don't emit JS files - Next.js handles compilation
     "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
+    "moduleResolution": "bundler", // Use bundler resolution for better compatibility with modern tools
+    "resolveJsonModule": true, // Allow importing JSON files as modules
+    "isolatedModules": true, // Ensure each file can be transpiled independently
+    "jsx": "preserve", // Let Next.js handle JSX transformation
+    "incremental": true, // Enable incremental compilation for faster rebuilds
     "plugins": [
       {
-        "name": "next"
+        "name": "next" // Next.js TypeScript plugin for enhanced IDE support
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"] // Path mapping for cleaner imports
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

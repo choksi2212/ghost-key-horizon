@@ -1,5 +1,6 @@
 "use client"
 
+// TODO: Consider adding error boundaries for better UX
 import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { KeystrokeCapture } from "@/components/keystroke-capture"
@@ -7,22 +8,26 @@ import { AuditDashboard } from "@/components/audit-dashboard"
 import { AdminPanel } from "@/components/admin-panel"
 import { ThemeToggle } from "@/components/theme-toggle"
 
+// Main landing page component - tried to keep it clean but still cybersec themed
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState("auth")
+  // Default to auth tab since that's what most users will want first
+  const [currentTab, setCurrentTab] = useState("auth")
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-black dark:via-slate-900 dark:to-black transition-all duration-500">
-      {/* Cybersecurity Grid Background */}
+      {/* Grid pattern background - spent way too much time getting this gradient right */}
       <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,255,0.03)_1px,transparent_1px)] bg-[size:50px_50px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]"></div>
 
       {/* Header */}
       <div className="relative border-b border-cyan-500/20 bg-slate-900/90 dark:bg-black/90 backdrop-blur-sm">
         <div className="container mx-auto max-w-6xl px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
+            {/* Logo container - using emoji because why not? */}
             <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-500/25">
               <span className="text-white font-bold text-lg">🔐</span>
             </div>
             <div>
+              {/* Main title - tried to make it sound enterprise-y */}
               <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
                 Keystroke Dynamic Authentication with Voice Biometrics
               </h1>
@@ -54,20 +59,24 @@ export default function HomePage() {
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        {/* Main navigation tabs - keeping it simple with 3 main sections */}
+        <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3 bg-slate-800/50 dark:bg-slate-900/50 border border-slate-700/50 dark:border-slate-600/50 backdrop-blur-sm">
+            {/* Authentication tab - this is where the magic happens */}
             <TabsTrigger
               value="auth"
               className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-300 data-[state=active]:border-cyan-500/50 transition-all duration-300 font-medium text-slate-300"
             >
               🔐 Authentication
             </TabsTrigger>
+            {/* Analytics and monitoring dashboard */}
             <TabsTrigger
               value="audit"
               className="data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-300 data-[state=active]:border-blue-500/50 transition-all duration-300 font-medium text-slate-300"
             >
               📊 Threat Dashboard
             </TabsTrigger>
+            {/* Admin controls - probably should add some role-based access here eventually */}
             <TabsTrigger
               value="admin"
               className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-300 data-[state=active]:border-purple-500/50 transition-all duration-300 font-medium text-slate-300"
@@ -76,6 +85,7 @@ export default function HomePage() {
             </TabsTrigger>
           </TabsList>
 
+          {/* Tab content areas with smooth animations */}
           <TabsContent value="auth" className="mt-6 animate-slide-up">
             <KeystrokeCapture />
           </TabsContent>

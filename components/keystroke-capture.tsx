@@ -1,5 +1,6 @@
 "use client"
 
+// Main keystroke authentication component - this is where the magic happens
 import type React from "react"
 
 import { useState, useRef } from "react"
@@ -17,94 +18,101 @@ import { AnomalyHeatmap } from "./anomaly-heatmap"
 import { VoiceRegistration } from "./voice-registration"
 import { VoiceAuthModal } from "./voice-auth-modal"
 
+// Constants - probably should move these to a config file eventually
 const PASSWORD_LENGTH = 11
 const SAMPLES_REQUIRED = 10
 
 export function KeystrokeCapture() {
-  const [mode, setMode] = useState<"auth" | "register">("auth")
-  const [username, setUsername] = useState("")
-  const [password, setPassword] = useState("")
+  // Main component state - keeping track of auth vs registration mode
+  const [currentMode, setCurrentMode] = useState<"auth" | "register">("auth")
+  const [userIdentifier, setUserIdentifier] = useState("")
+  const [userPassphrase, setUserPassphrase] = useState("")
+
+  // Password validation for registration - ensuring consistency across samples
+  // by yas: checks if next iterated pass matches with the first pass if yes then next else exp error
+  const [firstPassword, setFirstPassword] = useState<string | null>(null)
 
 
-//by yas: checks if next iterated pass matches with the first pass if yes then next else exp error
-const [initialPassword, setInitialPassword] = useState<string | null>(null)
+  // UI feedback and status management
+  const [authResult, setAuthResult] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null)
+  const [capturedSamples, setCapturedSamples] = useState(0)
+  const [enablePrivacyMode, setEnablePrivacyMode] = useState(false)
+  const [showAnomalyMap, setShowAnomalyMap] = useState(false)
+  const [keystrokeDeviations, setKeystrokeDeviations] = useState<number[]>([])
 
+  // Voice authentication fallback system
+  const [authFailureCount, setAuthFailureCount] = useState(0)
+  const [showVoiceAuthDialog, setShowVoiceAuthDialog] = useState(false)
+  const [showVoiceSetup, setShowVoiceSetup] = useState(false)
+  const [hasVoiceProfile, setHasVoiceProfile] = useState(false)
 
-  const [result, setResult] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null)
-  const [sampleCount, setSampleCount] = useState(0)
-  const [privacyMode, setPrivacyMode] = useState(false)
-  const [showHeatmap, setShowHeatmap] = useState(false)
-  const [heatmapData, setHeatmapData] = useState<number[]>([])
-
-  // Voice authentication states
-  const [failedAttempts, setFailedAttempts] = useState(0)
-  const [showVoiceAuth, setShowVoiceAuth] = useState(false)
-  const [showVoiceRegistration, setShowVoiceRegistration] = useState(false)
-  const [isVoiceRegistered, setIsVoiceRegistered] = useState(false)
-
-  const passwordRef = useRef<HTMLInputElement>(null)
+  // DOM refs for focus management
+  const passphraseInputRef = useRef<HTMLInputElement>(null)
   const { captureKeystrokes, extractFeatures, trainModel, authenticate, resetCapture, isCapturing, keystrokeData } =
     useKeystrokeAnalyzer()
 
-  // Add Enter key handler
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  // Handle Enter key for form submission + keystroke capture
+  const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault()
-      if (mode === "auth") {
-        handleAuth()
+      if (currentMode === "auth") {
+        processAuthentication()
       } else {
-        handleRegister()
+        processRegistration()
       }
     } else {
+      // Capture all other keystrokes for analysis
       captureKeystrokes(e, "keydown")
     }
   }
 
-  const handleAuth = async () => {
-    if (!username || !password) {
-      setResult({ type: "error", message: "Please enter both username and password" })
+  const processAuthentication = async () => {
+    if (!userIdentifier || !userPassphrase) {
+      setAuthResult({ type: "error", message: "Please enter both username and password" })
       return
     }
 
     try {
-      const features = extractFeatures(keystrokeData)
+      const keystrokeFeatures = extractFeatures(keystrokeData)
 
-      // Use hook's authenticate which now uses RuntimeAPI (local on-device in Capacitor)
-      const authResult = await authenticate(username, features, password)
-      console.log("Auth result:", authResult)
+      // Authenticate using our custom ML pipeline (runs locally for security)
+      const authResponse = await authenticate(userIdentifier, keystrokeFeatures, userPassphrase)
+      console.log("Auth result:", authResponse)
 
-      // Handle the response based on the actual API structure
-      if (authResult.authenticated) {
-        setResult({
+      // Process authentication response
+      if (authResponse.authenticated) {
+        setAuthResult({
           type: "success",
-          message: `✅ AUTHENTICATION SUCCESSFUL\nBiometric Error: ${(authResult.reconstructionError || 0).toFixed(5)}\n🛡️ ACCESS GRANTED`,
+          message: `✅ AUTHENTICATION SUCCESSFUL\nBiometric Error: ${(authResponse.reconstructionError || 0).toFixed(5)}\n🛡️ ACCESS GRANTED`,
         })
+        // Haptic feedback for successful auth
         try { await Haptics.impact({ style: ImpactStyle.Heavy }) } catch {}
-        setHeatmapData(authResult.deviations || [])
-        setShowHeatmap(true)
-        setFailedAttempts(0) // Reset failed attempts on success
+        setKeystrokeDeviations(authResponse.deviations || [])
+        setShowAnomalyMap(true)
+        setAuthFailureCount(0) // Reset failure counter
 
-        // Log the authentication attempt
-        await logAuthAttempt(username, true, authResult.reconstructionError || 0)
+        // Log this successful attempt
+        await logAuthenticationAttempt(userIdentifier, true, authResponse.reconstructionError || 0)
       } else {
-        const newFailedAttempts = failedAttempts + 1
-        setFailedAttempts(newFailedAttempts)
+        const newFailureCount = authFailureCount + 1
+        setAuthFailureCount(newFailureCount)
 
-        setResult({
+        setAuthResult({
           type: "error",
-          message: `❌ AUTHENTICATION FAILED (Attempt ${newFailedAttempts}/2)\nBiometric Error: ${(authResult.reconstructionError || 0).toFixed(5)}\n🚫 ACCESS DENIED\nReason: ${authResult.reason || "Authentication failed"}`,
+          message: `❌ AUTHENTICATION FAILED (Attempt ${newFailureCount}/2)\nBiometric Error: ${(authResponse.reconstructionError || 0).toFixed(5)}\n🚫 ACCESS DENIED\nReason: ${authResponse.reason || "Authentication failed"}`,
         })
-        try { await Haptics.notification({ type: NotificationType.ERROR }) } catch {}
-        setHeatmapData(authResult.deviations || [])
-        setShowHeatmap(true)
+        // Haptic feedback for failed auth
+        try { await Haptics.notification({ type: NotificationType.Error }) } catch {}
+        setKeystrokeDeviations(authResponse.deviations || [])
+        setShowAnomalyMap(true)
 
-        // Log the authentication attempt
-        await logAuthAttempt(username, false, authResult.reconstructionError || 0)
+        // Log this failed attempt
+        await logAuthenticationAttempt(userIdentifier, false, authResponse.reconstructionError || 0)
 
-        // Trigger voice authentication after 2 failed attempts
-        if (newFailedAttempts >= 2) {
-          setShowVoiceAuth(true)
-          setResult({
+        // Trigger voice fallback after 2 consecutive failures
+        if (newFailureCount >= 2) {
+          setShowVoiceAuthDialog(true)
+          setAuthResult({
             type: "error",
             message: `🚨 MULTIPLE AUTHENTICATION FAILURES\n🎤 Voice authentication required for security verification`,
           })
@@ -112,87 +120,92 @@ const [initialPassword, setInitialPassword] = useState<string | null>(null)
       }
     } catch (error) {
       console.error("Authentication error:", error)
-      setResult({ type: "error", message: `🚨 SECURITY BREACH DETECTED: ${error}` })
+      setAuthResult({ type: "error", message: `🚨 SECURITY BREACH DETECTED: ${error}` })
     }
 
-    resetForm()
+    clearFormInputs()
   }
 
-  const handleRegister = async () => {
-  if (!username || !password) {
-    setResult({ type: "error", message: "Please enter both username and password" })
-    return
-  }
+  const processRegistration = async () => {
+    if (!userIdentifier || !userPassphrase) {
+      setAuthResult({ type: "error", message: "Please enter both username and password" })
+      return
+    }
 
-  if (initialPassword === null) {
-    // First password input — store it
-    setInitialPassword(password)
-  } else if (password !== initialPassword) {
-    // Mismatch with initial password — show error
-    setResult({ type: "error", message: "🚫 Password mismatch! Use the same passphrase as the first sample." })
-    resetForm()
-    return
-  }
+    // Ensure password consistency across training samples
+    if (firstPassword === null) {
+      // First sample - store the password for comparison
+      setFirstPassword(userPassphrase)
+    } else if (userPassphrase !== firstPassword) {
+      // Password doesn't match the first one - reject this sample
+      setAuthResult({ type: "error", message: "🚫 Password mismatch! Use the same passphrase as the first sample." })
+      clearFormInputs()
+      return
+    }
 
-  try {
-    const features = extractFeatures(keystrokeData)
-    const success = await trainModel(username, features, sampleCount, privacyMode)
+    try {
+      const keystrokeFeatures = extractFeatures(keystrokeData)
+      const trainingSuccess = await trainModel(userIdentifier, keystrokeFeatures, capturedSamples, enablePrivacyMode)
 
-    if (success) {
-      const newCount = sampleCount + 1
-      setSampleCount(newCount)
+      if (trainingSuccess) {
+        const newSampleCount = capturedSamples + 1
+        setCapturedSamples(newSampleCount)
 
-      if (newCount >= SAMPLES_REQUIRED) {
-        setResult({
-          type: "success",
-          message: `✅ BIOMETRIC PROFILE CREATED\n🤖 Neural Network Trained for ${username}\n🔒 Security Clearance: ACTIVE`,
-        })
-        setSampleCount(0)
-        setInitialPassword(null) // Reset initial password for next user
-        setShowVoiceRegistration(true)
-      } else {
-        setResult({
-          type: "info",
-          message: `📊 Biometric Sample ${newCount}/${SAMPLES_REQUIRED} Captured\n⌨️ Continue keystroke pattern analysis`,
-        })
+        if (newSampleCount >= SAMPLES_REQUIRED) {
+          setAuthResult({
+            type: "success",
+            message: `✅ BIOMETRIC PROFILE CREATED\n🤖 Neural Network Trained for ${userIdentifier}\n🔒 Security Clearance: ACTIVE`,
+          })
+          setCapturedSamples(0)
+          setFirstPassword(null) // Reset for next user registration
+          setShowVoiceSetup(true) // Move to voice registration
+        } else {
+          setAuthResult({
+            type: "info",
+            message: `📊 Biometric Sample ${newSampleCount}/${SAMPLES_REQUIRED} Captured\n⌨️ Continue keystroke pattern analysis`,
+          })
+        }
+
+        resetCapture() // Clear keystroke buffer
       }
-
-      resetCapture()
+    } catch (error) {
+      setAuthResult({ type: "error", message: `🚨 TRAINING ERROR: ${error}` })
     }
-  } catch (error) {
-    setResult({ type: "error", message: `🚨 TRAINING ERROR: ${error}` })
-  }
 
-  resetForm()
-}
+    clearFormInputs()
+  }
   
 
-  const handleVoiceAuthSuccess = () => {
-    setFailedAttempts(0)
-    setResult({
+  // Handle successful voice authentication (fallback method)
+  const handleVoiceAuthenticationSuccess = () => {
+    setAuthFailureCount(0)
+    setAuthResult({
       type: "success",
       message: `✅ VOICE AUTHENTICATION SUCCESSFUL\n🛡️ ACCESS GRANTED VIA BIOMETRIC FALLBACK`,
     })
   }
 
-  const handleVoiceRegistrationComplete = () => {
-    setIsVoiceRegistered(true)
-    setShowVoiceRegistration(false)
-    setMode("auth")
-    setResult({
+  // Handle completion of voice profile setup during registration
+  const handleVoiceProfileComplete = () => {
+    setHasVoiceProfile(true)
+    setShowVoiceSetup(false)
+    setCurrentMode("auth")
+    setAuthResult({
       type: "success",
       message: `🎉 COMPLETE BIOMETRIC PROFILE CREATED\n⌨️ Keystroke + 🎤 Voice Authentication Ready`,
     })
   }
 
-  const resetForm = () => {
-    setPassword("")
-    if (passwordRef.current) {
-      passwordRef.current.focus()
+  // Reset form inputs and focus management
+  const clearFormInputs = () => {
+    setUserPassphrase("")
+    if (passphraseInputRef.current) {
+      passphraseInputRef.current.focus()
     }
   }
 
-  const logAuthAttempt = async (user: string, success: boolean, error: number) => {
+  // Log authentication attempts for audit trail
+  const logAuthenticationAttempt = async (user: string, success: boolean, error: number) => {
     try {
       await fetch("/api/log-auth", {
         method: "POST",
@@ -211,9 +224,9 @@ const [initialPassword, setInitialPassword] = useState<string | null>(null)
     }
   }
 
-  // Show voice registration if in register mode and keystroke training is complete
-  if (showVoiceRegistration) {
-    return <VoiceRegistration username={username} onComplete={handleVoiceRegistrationComplete} />
+  // Show voice registration component if we're in that flow
+  if (showVoiceSetup) {
+    return <VoiceRegistration username={userIdentifier} onComplete={handleVoiceProfileComplete} />
   }
 
   return (
@@ -227,25 +240,25 @@ const [initialPassword, setInitialPassword] = useState<string | null>(null)
         >
           <CardTitle className="flex items-center justify-between text-slate-100 dark:text-slate-200">
             <span className="flex items-center gap-3">
-              {mode === "auth" ? (
+              {currentMode === "auth" ? (
                 <Shield className="w-6 h-6 text-cyan-400" />
               ) : (
                 <Fingerprint className="w-6 h-6 text-blue-400" />
               )}
               <span className="text-xl bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-                {mode === "auth" ? "Multi-Modal Biometric Authentication" : "Biometric Profile Training"}
+                {currentMode === "auth" ? "Multi-Modal Biometric Authentication" : "Biometric Profile Training"}
               </span>
             </span>
             <div className="flex gap-2">
               <Button
-                variant={mode === "auth" ? "default" : "outline"}
+                variant={currentMode === "auth" ? "default" : "outline"}
                 size="sm"
                 onClick={() => {
-    setMode("auth")
-    setInitialPassword(null) // clear it when switching mode
-  }}
+                  setCurrentMode("auth")
+                  setFirstPassword(null) // clear it when switching mode
+                }}
                 className={
-                  mode === "auth"
+                  currentMode === "auth"
                     ? "bg-cyan-600/80 hover:bg-cyan-500 text-white border-cyan-500/50"
                     : "border-slate-600 text-slate-300 hover:bg-slate-700/50"
                 }
@@ -254,11 +267,11 @@ const [initialPassword, setInitialPassword] = useState<string | null>(null)
                 Authenticate
               </Button>
               <Button
-                variant={mode === "register" ? "default" : "outline"}
+                variant={currentMode === "register" ? "default" : "outline"}
                 size="sm"
-                onClick={() => setMode("register")}
+                onClick={() => setCurrentMode("register")}
                 className={
-                  mode === "register"
+                  currentMode === "register"
                     ? "bg-blue-600/80 hover:bg-blue-500 text-white border-blue-500/50"
                     : "border-slate-600 text-slate-300 hover:bg-slate-700/50"
                 }
@@ -269,7 +282,7 @@ const [initialPassword, setInitialPassword] = useState<string | null>(null)
             </div>
           </CardTitle>
           <CardDescription className="text-slate-400 dark:text-slate-500">
-            {mode === "auth"
+            {currentMode === "auth"
               ? "🔐 Secure access through keystroke dynamics with voice fallback authentication"
               : "📝 Create biometric profile with keystroke + voice pattern recognition"}
           </CardDescription>
@@ -301,8 +314,8 @@ const [initialPassword, setInitialPassword] = useState<string | null>(null)
               </Label>
               <Input
                 id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={userIdentifier}
+                onChange={(e) => setUserIdentifier(e.target.value)}
                 placeholder="Enter security ID"
                 className="bg-slate-700/50 dark:bg-slate-800/50 border-slate-600/50 dark:border-slate-700/50 text-slate-200 placeholder:text-slate-500 focus:border-cyan-500/50 dark:focus:border-cyan-400/50 transition-all duration-300"
               />
@@ -317,30 +330,30 @@ const [initialPassword, setInitialPassword] = useState<string | null>(null)
                 Biometric Passphrase
               </Label>
               <Input
-                ref={passwordRef}
+                ref={passphraseInputRef}
                 id="password"
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={handleKeyDown}
+                value={userPassphrase}
+                onChange={(e) => setUserPassphrase(e.target.value)}
+                onKeyDown={handleKeyPress}
                 onKeyUp={(e) => captureKeystrokes(e, "keyup")}
                 placeholder="Enter passphrase for analysis"
                 className="font-mono text-lg bg-slate-700/50 dark:bg-slate-800/50 border-slate-600/50 dark:border-slate-700/50 text-slate-200 placeholder:text-slate-500 focus:border-cyan-500/50 dark:focus:border-cyan-400/50 transition-all duration-300"
               />
               <p className="text-xs text-slate-500 dark:text-slate-600 flex items-center gap-1">
                 <Cpu className="w-3 h-3" />
-                Press Enter to {mode === "auth" ? "authenticate" : "capture biometric sample"}
+                Press Enter to {currentMode === "auth" ? "authenticate" : "capture biometric sample"}
               </p>
             </div>
           </div>
 
-          {mode === "register" && (
+          {currentMode === "register" && (
             <>
               <div className="flex items-center space-x-3 p-4 bg-slate-700/30 dark:bg-slate-800/30 rounded-lg border border-slate-600/30 dark:border-slate-700/30">
                 <Checkbox
                   id="privacy"
-                  checked={privacyMode}
-                  onCheckedChange={(checked) => setPrivacyMode(checked as boolean)}
+                  checked={enablePrivacyMode}
+                  onCheckedChange={(checked) => setEnablePrivacyMode(checked as boolean)}
                   className="border-slate-500 dark:border-slate-600"
                 />
                 <Label htmlFor="privacy" className="text-sm text-slate-400 dark:text-slate-500">
@@ -348,7 +361,7 @@ const [initialPassword, setInitialPassword] = useState<string | null>(null)
                 </Label>
               </div>
 
-              {sampleCount > 0 && (
+              {capturedSamples > 0 && (
                 <div className="space-y-3 p-4 rounded-lg border border-blue-500/30 dark:border-blue-400/30">
                   <div
                     className="p-4 -m-4 rounded-lg"
@@ -361,12 +374,12 @@ const [initialPassword, setInitialPassword] = useState<string | null>(null)
                       Keystroke Pattern Training Progress
                     </Label>
                     <Progress
-                      value={(sampleCount / SAMPLES_REQUIRED) * 100}
+                      value={(capturedSamples / SAMPLES_REQUIRED) * 100}
                       className="h-3 bg-slate-700 dark:bg-slate-800 mt-2"
                     />
                     <p className="text-sm text-slate-400 dark:text-slate-500 flex items-center gap-2 mt-2">
                       <span className="inline-block w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></span>
-                      {sampleCount}/{SAMPLES_REQUIRED} keystroke vectors captured
+                      {capturedSamples}/{SAMPLES_REQUIRED} keystroke vectors captured
                     </p>
                   </div>
                 </div>
@@ -374,29 +387,29 @@ const [initialPassword, setInitialPassword] = useState<string | null>(null)
             </>
           )}
 
-          {/* Failed attempts warning */}
-          {mode === "auth" && failedAttempts > 0 && failedAttempts < 2 && (
+          {/* Security warning for failed authentication attempts */}
+          {currentMode === "auth" && authFailureCount > 0 && authFailureCount < 2 && (
             <div className="p-3 bg-orange-500/10 rounded-lg border border-orange-500/30">
               <div className="flex items-center gap-2 text-orange-300 text-sm">
                 <Shield className="w-4 h-4" />
                 <span className="font-medium">Security Alert</span>
               </div>
               <p className="text-xs text-orange-400/80 mt-1">
-                Authentication failed {failedAttempts}/2 times. Voice authentication will be required after 2 failures.
+                Authentication failed {authFailureCount}/2 times. Voice authentication will be required after 2 failures.
               </p>
             </div>
           )}
 
           <Button
-            onClick={mode === "auth" ? handleAuth : handleRegister}
+            onClick={currentMode === "auth" ? processAuthentication : processRegistration}
             className={`w-full transition-all duration-300 ${
-              mode === "auth"
+              currentMode === "auth"
                 ? "bg-gradient-to-r from-cyan-600/80 to-cyan-700/80 hover:from-cyan-500 hover:to-cyan-600 border border-cyan-500/50"
                 : "bg-gradient-to-r from-blue-600/80 to-blue-700/80 hover:from-blue-500 hover:to-blue-600 border border-blue-500/50"
             } text-white shadow-lg hover:shadow-xl transform hover:scale-[1.02] font-medium backdrop-blur-sm`}
             disabled={isCapturing}
           >
-            {mode === "auth" ? (
+            {currentMode === "auth" ? (
               <>
                 <Shield className="w-5 h-5 mr-2" />
                 INITIATE AUTHENTICATION
@@ -409,32 +422,32 @@ const [initialPassword, setInitialPassword] = useState<string | null>(null)
             )}
           </Button>
 
-          {result && (
+          {authResult && (
             <Alert
               className={`transition-all duration-300 backdrop-blur-sm ${
-                result.type === "success"
+                authResult.type === "success"
                   ? "border-cyan-500/50 bg-cyan-500/10 text-cyan-300 dark:text-cyan-400"
-                  : result.type === "error"
+                  : authResult.type === "error"
                     ? "border-red-500/50 bg-red-500/10 text-red-300 dark:text-red-400"
                     : "border-blue-500/50 bg-blue-500/10 text-blue-300 dark:text-blue-400"
               }`}
             >
               <AlertDescription className="whitespace-pre-line font-medium font-mono text-sm">
-                {result.message}
+                {authResult.message}
               </AlertDescription>
             </Alert>
           )}
         </CardContent>
       </Card>
 
-      {showHeatmap && heatmapData.length > 0 && <AnomalyHeatmap data={heatmapData} />}
+      {showAnomalyMap && keystrokeDeviations.length > 0 && <AnomalyHeatmap data={keystrokeDeviations} />}
 
-      {/* Voice Authentication Modal */}
+      {/* Voice Authentication Modal for fallback authentication */}
       <VoiceAuthModal
-        isOpen={showVoiceAuth}
-        onClose={() => setShowVoiceAuth(false)}
-        username={username}
-        onSuccess={handleVoiceAuthSuccess}
+        isOpen={showVoiceAuthDialog}
+        onClose={() => setShowVoiceAuthDialog(false)}
+        username={userIdentifier}
+        onSuccess={handleVoiceAuthenticationSuccess}
       />
     </div>
   )

@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import fs from "fs/promises"
 import path from "path"
-import { type AggregatedVoiceFeatures, calculateRobustSimilarityScore } from "@/utils/voice-feature-extractor"
+import { type SessionVoiceProfile, calculateComprehensiveVoiceMatch } from "@/utils/voice-feature-extractor"
 import { AUTH_CONFIG } from "@/config/auth-config"
 
 export async function POST(request: NextRequest) {
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse the extracted features
-    const extractedFeatures: AggregatedVoiceFeatures = featuresJson ? JSON.parse(featuresJson) : null
+    const extractedFeatures: SessionVoiceProfile = featuresJson ? JSON.parse(featuresJson) : null
 
     if (!extractedFeatures) {
       return NextResponse.json({ error: "Voice features are required" }, { status: 400 })
@@ -50,11 +50,11 @@ export async function POST(request: NextRequest) {
     // Compare extracted features with the reference model using robust similarity
     const referenceModel = voiceProfile.referenceModel
 
-    // Calculate robust similarity score that handles voice variations
-    const similarityResult = calculateRobustSimilarityScore(extractedFeatures, referenceModel)
+    // Calculate comprehensive voice similarity score that handles voice variations
+    const similarityResult = calculateComprehensiveVoiceMatch(extractedFeatures, referenceModel)
 
     // Use configurable threshold
-    const SIMILARITY_THRESHOLD = AUTH_CONFIG.VOICE_SIMILARITY_THRESHOLD
+    const SIMILARITY_THRESHOLD = AUTH_CONFIG.VOICE_MATCH_THRESHOLD
     const success = similarityResult.overallSimilarity >= SIMILARITY_THRESHOLD
 
     // Enhanced logging with robustness metrics

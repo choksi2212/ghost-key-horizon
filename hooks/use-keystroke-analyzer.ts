@@ -1,143 +1,151 @@
 "use client"
 
+// Custom hook for keystroke dynamics analysis - this is where the biometric magic happens
 import type React from "react"
 import { useState, useCallback } from "react"
 import RuntimeAPI from "@/lib/runtime-api"
 
+// Structure for capturing individual keystroke events
 interface KeystrokeEvent {
   key: string
   type: "keydown" | "keyup"
-  timestamp: number
+  timestamp: number // High-precision timestamp from performance.now()
 }
 
+// Extracted biometric features from keystroke patterns
 interface ExtractedFeatures {
-  holdTimes: number[]
-  ddTimes: number[]
-  udTimes: number[]
-  typingSpeed: number
-  flightTime: number
-  errorRate: number
-  pressPressure: number
-  features: number[]
+  holdTimes: number[] // How long each key is held down
+  ddTimes: number[] // Down-to-down timing between consecutive keys
+  udTimes: number[] // Up-to-down timing (flight time)
+  typingSpeed: number // Overall typing velocity
+  flightTime: number // Average time between key releases and next presses
+  errorRate: number // Number of backspace/correction events
+  pressPressure: number // Variance in key press timing (pressure simulation)
+  features: number[] // Final feature vector for ML processing
 }
 
 export function useKeystrokeAnalyzer() {
-  const [keystrokeData, setKeystrokeData] = useState<KeystrokeEvent[]>([])
-  const [isCapturing, setIsCapturing] = useState(false)
+  // State for capturing and managing keystroke data
+  const [keystrokeBuffer, setKeystrokeBuffer] = useState<KeystrokeEvent[]>([])
+  const [isCurrentlyCapturing, setIsCurrentlyCapturing] = useState(false)
 
-  const captureKeystrokes = useCallback((event: React.KeyboardEvent, type: "keydown" | "keyup") => {
-    const keystroke: KeystrokeEvent = {
+  // Capture keystroke events with high-precision timing
+  const captureKeystrokeEvent = useCallback((event: React.KeyboardEvent, type: "keydown" | "keyup") => {
+    const keystrokeEntry: KeystrokeEvent = {
       key: event.key,
       type,
-      timestamp: performance.now(),
+      timestamp: performance.now(), // High-precision timing for accurate biometrics
     }
 
-    setKeystrokeData((prev) => [...prev, keystroke])
+    setKeystrokeBuffer((previousData) => [...previousData, keystrokeEntry])
   }, [])
 
-  const extractFeatures = useCallback((data: KeystrokeEvent[]): ExtractedFeatures => {
-    // Separate keydown and keyup events
-    const keydowns = data.filter((k) => k.type === "keydown")
-    const keyups = data.filter((k) => k.type === "keyup")
+  // Extract biometric features from raw keystroke data
+  const extractBiometricFeatures = useCallback((rawData: KeystrokeEvent[]): ExtractedFeatures => {
+    // Separate keydown and keyup events for timing analysis
+    const keyDownEvents = rawData.filter((k) => k.type === "keydown")
+    const keyUpEvents = rawData.filter((k) => k.type === "keyup")
 
-    // Create matched keys array (key, timestamp) for keydown events
-    const matchedKeys = keydowns.map((k) => [k.key, k.timestamp] as [string, number])
+    // Create timeline of key presses with timestamps
+    const keyPressTimeline = keyDownEvents.map((k) => [k.key, k.timestamp] as [string, number])
 
-    const holdTimes: number[] = []
-    const ddTimes: number[] = []
-    const udTimes: number[] = []
+    const keyHoldDurations: number[] = []
+    const downToDownIntervals: number[] = []
+    const upToDownIntervals: number[] = []
 
-    // Calculate hold times (key press to key release)
-    matchedKeys.forEach(([key, downTs]) => {
-      const upEvent = keyups.find((u) => u.key === key && u.timestamp > downTs)
-      if (upEvent) {
-        holdTimes.push(upEvent.timestamp - downTs)
+    // Calculate key hold times (how long each key is pressed)
+    keyPressTimeline.forEach(([keyChar, downTimestamp]) => {
+      const correspondingUpEvent = keyUpEvents.find((u) => u.key === keyChar && u.timestamp > downTimestamp)
+      if (correspondingUpEvent) {
+        keyHoldDurations.push(correspondingUpEvent.timestamp - downTimestamp)
       }
     })
 
-    // Calculate dwell times (down-down times between consecutive key presses)
-    for (let i = 0; i < matchedKeys.length - 1; i++) {
-      const press1 = matchedKeys[i][1]
-      const press2 = matchedKeys[i + 1][1]
-      ddTimes.push(press2 - press1)
+    // Calculate dwell times (interval between consecutive key presses)
+    for (let i = 0; i < keyPressTimeline.length - 1; i++) {
+      const currentKeyPress = keyPressTimeline[i][1]
+      const nextKeyPress = keyPressTimeline[i + 1][1]
+      downToDownIntervals.push(nextKeyPress - currentKeyPress)
     }
 
-    // Calculate flight times (up-down times)
-    for (let i = 0; i < matchedKeys.length - 1; i++) {
-      const currentKey = matchedKeys[i][0]
-      const currentDown = matchedKeys[i][1]
-      const nextDown = matchedKeys[i + 1][1]
+    // Calculate flight times (time from key release to next key press)
+    for (let i = 0; i < keyPressTimeline.length - 1; i++) {
+      const currentKeyChar = keyPressTimeline[i][0]
+      const currentKeyDown = keyPressTimeline[i][1]
+      const nextKeyDown = keyPressTimeline[i + 1][1]
 
-      const currentUp = keyups.find((u) => u.key === currentKey && u.timestamp > currentDown)
-      if (currentUp) {
-        udTimes.push(nextDown - currentUp.timestamp)
+      const currentKeyUp = keyUpEvents.find((u) => u.key === currentKeyChar && u.timestamp > currentKeyDown)
+      if (currentKeyUp) {
+        upToDownIntervals.push(nextKeyDown - currentKeyUp.timestamp)
       } else {
-        // Fallback if no up event found
-        udTimes.push(nextDown - currentDown)
+        // Fallback if key up event is missing (shouldn't happen but safety first)
+        upToDownIntervals.push(nextKeyDown - currentKeyDown)
       }
     }
 
-    // Calculate additional features
-    const totalTime =
+    // Calculate derived biometric metrics
+    const totalTypingTime =
       Math.max(
-        holdTimes.reduce((sum, t) => sum + t, 0),
-        ddTimes.reduce((sum, t) => sum + t, 0),
-        udTimes.reduce((sum, t) => sum + t, 0),
-      ) || 0.001
+        keyHoldDurations.reduce((sum, t) => sum + t, 0),
+        downToDownIntervals.reduce((sum, t) => sum + t, 0),
+        upToDownIntervals.reduce((sum, t) => sum + t, 0),
+      ) || 0.001 // Avoid division by zero
 
-    const typingSpeed = matchedKeys.length / (totalTime / 1000)
-    const flightTime = udTimes.length > 0 ? udTimes.reduce((a, b) => a + b, 0) / udTimes.length : 0
-    const errorRate = data.filter((k) => k.key === "Backspace").length
+    const overallTypingSpeed = keyPressTimeline.length / (totalTypingTime / 1000)
+    const averageFlightTime = upToDownIntervals.length > 0 ? upToDownIntervals.reduce((a, b) => a + b, 0) / upToDownIntervals.length : 0
+    const typoCount = rawData.filter((k) => k.key === "Backspace").length
 
-    // Calculate press pressure (variance of hold times)
-    const meanHoldTime = holdTimes.length > 0 ? holdTimes.reduce((a, b) => a + b, 0) / holdTimes.length : 0
-    const pressPressure =
-      holdTimes.length > 0
-        ? Math.sqrt(holdTimes.reduce((sum, t) => sum + Math.pow(t - meanHoldTime, 2), 0) / holdTimes.length)
+    // Calculate typing pressure variance (consistency indicator)
+    const meanHoldDuration = keyHoldDurations.length > 0 ? keyHoldDurations.reduce((a, b) => a + b, 0) / keyHoldDurations.length : 0
+    const typingPressureVariance =
+      keyHoldDurations.length > 0
+        ? Math.sqrt(keyHoldDurations.reduce((sum, t) => sum + Math.pow(t - meanHoldDuration, 2), 0) / keyHoldDurations.length)
         : 0
 
-    // Create feature vector (matching original Python implementation)
-    const PASSWORD_LENGTH = 11
-    const featureVector = [
-      ...holdTimes.slice(0, PASSWORD_LENGTH),
-      ...ddTimes.slice(0, PASSWORD_LENGTH - 1),
-      ...udTimes.slice(0, PASSWORD_LENGTH - 1),
-      typingSpeed,
-      flightTime,
-      errorRate,
-      pressPressure,
+    // Create feature vector for machine learning (matches our Python training pipeline)
+    const PASSWORD_LENGTH = 11 // Expected password length for normalization
+    const mlFeatureVector = [
+      ...keyHoldDurations.slice(0, PASSWORD_LENGTH),
+      ...downToDownIntervals.slice(0, PASSWORD_LENGTH - 1),
+      ...upToDownIntervals.slice(0, PASSWORD_LENGTH - 1),
+      overallTypingSpeed,
+      averageFlightTime,
+      typoCount,
+      typingPressureVariance,
     ]
 
-    // Pad with zeros if needed
-    while (featureVector.length < PASSWORD_LENGTH * 3 + 1) {
-      featureVector.push(0)
+    // Pad feature vector with zeros if we have fewer keystrokes than expected
+    while (mlFeatureVector.length < PASSWORD_LENGTH * 3 + 1) {
+      mlFeatureVector.push(0)
     }
 
     return {
-      holdTimes,
-      ddTimes,
-      udTimes,
-      typingSpeed,
-      flightTime,
-      errorRate,
-      pressPressure,
-      features: featureVector,
+      holdTimes: keyHoldDurations,
+      ddTimes: downToDownIntervals,
+      udTimes: upToDownIntervals,
+      typingSpeed: overallTypingSpeed,
+      flightTime: averageFlightTime,
+      errorRate: typoCount,
+      pressPressure: typingPressureVariance,
+      features: mlFeatureVector,
     }
   }, [])
 
-  const trainModel = useCallback(
+  // Train the ML model with new biometric data
+  const trainBiometricModel = useCallback(
     async (username: string, features: ExtractedFeatures, sampleCount: number, privacyMode: boolean) => {
       try {
         return await RuntimeAPI.trainModel(username, features as any, sampleCount, privacyMode)
       } catch (error) {
-        console.error("Training failed:", error)
+        console.error("Model training failed:", error)
         return false
       }
     },
     [],
   )
 
-  const authenticate = useCallback(async (username: string, features: ExtractedFeatures, password: string) => {
+  // Authenticate user against their trained biometric model
+  const authenticateUser = useCallback(async (username: string, features: ExtractedFeatures, password: string) => {
     try {
       return await RuntimeAPI.authenticate(username, features as any, password)
     } catch (error) {
@@ -146,17 +154,18 @@ export function useKeystrokeAnalyzer() {
     }
   }, [])
 
-  const resetCapture = useCallback(() => {
-    setKeystrokeData([])
+  // Clear the keystroke buffer for next capture session
+  const resetKeystrokeCapture = useCallback(() => {
+    setKeystrokeBuffer([])
   }, [])
 
   return {
-    captureKeystrokes,
-    extractFeatures,
-    trainModel,
-    authenticate,
-    resetCapture,
-    isCapturing,
-    keystrokeData,
+    captureKeystrokes: captureKeystrokeEvent,
+    extractFeatures: extractBiometricFeatures,
+    trainModel: trainBiometricModel,
+    authenticate: authenticateUser,
+    resetCapture: resetKeystrokeCapture,
+    isCapturing: isCurrentlyCapturing,
+    keystrokeData: keystrokeBuffer,
   }
 }

@@ -1,16 +1,19 @@
+/* Base Tailwind imports */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Custom CSS variables for theming - spent way too long tweaking these colors */
 @layer base {
   :root {
+    /* Light theme colors - not that anyone uses light mode for cybersec stuff */
     --background: 15 23 42;
     --foreground: 248 250 252;
     --card: 30 41 59;
     --card-foreground: 248 250 252;
     --popover: 30 41 59;
     --popover-foreground: 248 250 252;
-    --primary: 6 182 212;
+    --primary: 6 182 212; /* Cyan - gives that hacker vibe */
     --primary-foreground: 15 23 42;
     --secondary: 51 65 85;
     --secondary-foreground: 248 250 252;
@@ -18,12 +21,13 @@
     --muted-foreground: 148 163 184;
     --accent: 51 65 85;
     --accent-foreground: 248 250 252;
-    --destructive: 239 68 68;
+    --destructive: 239 68 68; /* Red for errors and alerts */
     --destructive-foreground: 248 250 252;
     --border: 51 65 85;
     --input: 51 65 85;
     --ring: 6 182 212;
-    --radius: 0.75rem;
+    --radius: 0.75rem; /* Slightly rounded corners look more modern */
+    /* Chart colors for analytics dashboard */
     --chart-1: 6 182 212;
     --chart-2: 59 130 246;
     --chart-3: 147 51 234;
@@ -31,8 +35,9 @@
     --chart-5: 251 191 36;
   }
 
+  /* Dark theme - this is where the magic happens */
   .dark {
-    --background: 0 0 0;
+    --background: 0 0 0; /* Pure black for that terminal feel */
     --foreground: 248 250 252;
     --card: 15 23 42;
     --card-foreground: 248 250 252;
@@ -51,6 +56,7 @@
     --border: 30 41 59;
     --input: 30 41 59;
     --ring: 6 182 212;
+    /* Keeping chart colors consistent across themes */
     --chart-1: 6 182 212;
     --chart-2: 59 130 246;
     --chart-3: 147 51 234;
@@ -59,33 +65,41 @@
   }
 }
 
+/* Global base styles */
 @layer base {
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
+    /* Enhanced font features for better readability */
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
+/* Custom utility classes and animations */
 @layer utilities {
+  /* Smooth fade-in for content loading */
   .animate-fade-in {
     animation: fade-in 0.8s ease-out;
   }
 
+  /* Slide up animation for tab content */
   .animate-slide-up {
     animation: slide-up 0.6s ease-out;
   }
 
+  /* Pulsing glow effect for interactive elements */
   .animate-pulse-glow {
     animation: pulse-glow 2s infinite;
   }
 
+  /* Cybersecurity themed gradient - looks pretty cool */
   .cyber-gradient {
     background: linear-gradient(135deg, #0891b2 0%, #3b82f6 50%, #8b5cf6 100%);
   }
 
+  /* Text gradient for titles and headers */
   .cyber-text-gradient {
     background: linear-gradient(135deg, #06b6d4, #3b82f6, #8b5cf6);
     -webkit-background-clip: text;
@@ -93,12 +107,14 @@
     background-clip: text;
   }
 
+  /* Loading shimmer effect for skeleton screens */
   .loading-shimmer {
     background: linear-gradient(90deg, rgba(6, 182, 212, 0) 0%, rgba(6, 182, 212, 0.2) 50%, rgba(6, 182, 212, 0) 100%);
     background-size: 200% 100%;
     animation: shimmer 2s infinite;
   }
 
+  /* Grid pattern for backgrounds */
   .cyber-grid {
     background-image: linear-gradient(rgba(6, 182, 212, 0.1) 1px, transparent 1px),
       linear-gradient(90deg, rgba(6, 182, 212, 0.1) 1px, transparent 1px);
@@ -106,7 +122,7 @@
   }
 }
 
-/* Custom animations */
+/* Keyframe animations - took forever to get the timing right */
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -129,6 +145,7 @@
   }
 }
 
+/* Pulsing glow for buttons and interactive elements */
 @keyframes pulse-glow {
   0%,
   100% {
@@ -139,6 +156,7 @@
   }
 }
 
+/* Shimmer effect for loading states */
 @keyframes shimmer {
   0% {
     background-position: -200% 0;
@@ -148,7 +166,7 @@
   }
 }
 
-/* Enhanced scrollbar styling */
+/* Custom scrollbar styling - makes everything look more polished */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -162,7 +180,7 @@
 ::-webkit-scrollbar-thumb {
   background: rgb(71 85 105);
   border-radius: 0.5rem;
-  border: 1px solid rgb(6 182 212 / 0.3);
+  border: 1px solid rgb(6 182 212 / 0.3); /* Subtle cyan border */
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -170,7 +188,7 @@
   border-color: rgb(6 182 212 / 0.5);
 }
 
-/* Focus states for accessibility */
+/* Accessibility focus states - important for keyboard navigation */
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
@@ -179,7 +197,7 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
-/* Responsive design improvements */
+/* Mobile responsiveness - because not everyone has a desktop */
 @media (max-width: 768px) {
   .container {
     padding-left: 1rem;
@@ -187,17 +205,18 @@ textarea:focus-visible {
   }
 }
 
-/* Cybersecurity themed elements */
+/* Component-specific styling for the cybersecurity theme */
 .cyber-card {
   @apply bg-slate-800/50 border border-slate-700/50 shadow-2xl backdrop-blur-sm;
-  transition: all 0.3s ease;
+  transition: all 0.3s ease; /* Smooth hover effects */
 }
 
 .cyber-card:hover {
   @apply shadow-cyan-500/20;
-  transform: translateY(-2px);
+  transform: translateY(-2px); /* Subtle lift on hover */
 }
 
+/* Status indicators for authentication results */
 .status-indicator {
   @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm;
 }
@@ -214,7 +233,7 @@ textarea:focus-visible {
   @apply bg-yellow-500/20 text-yellow-300 border border-yellow-500/30;
 }
 
-/* Glitch effect for cybersecurity theme */
+/* Glitch effect for that authentic hacker aesthetic - probably overkill but looks cool */
 .glitch {
   position: relative;
 }
@@ -231,13 +250,13 @@ textarea:focus-visible {
 
 .glitch::before {
   animation: glitch-1 0.5s infinite;
-  color: #06b6d4;
+  color: #06b6d4; /* Cyan layer */
   z-index: -1;
 }
 
 .glitch::after {
   animation: glitch-2 0.5s infinite;
-  color: #3b82f6;
+  color: #3b82f6; /* Blue layer */
   z-index: -2;
 }
 

@@ -3,14 +3,15 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
-// Define alert style variants
+// Alert style variants - default and destructive (error) states
 const alertVariants = cva(
+  // Base styles with icon positioning - the [&>svg] selectors handle icon placement
   "relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground",
   {
     variants: {
       variant: {
-        default: "bg-background text-foreground",
-        destructive:
+        default: "bg-background text-foreground", // Standard info alerts
+        destructive: // Error/warning alerts with red styling
           "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
       },
     },
@@ -20,7 +21,7 @@ const alertVariants = cva(
   }
 );
 
-// Alert wrapper component
+// Main alert container - includes proper ARIA role for accessibility
 const Alert = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants>
@@ -28,7 +29,7 @@ const Alert = forwardRef<
   return (
     <div
       ref={ref}
-      role="alert"
+      role="alert" // Important for screen readers
       className={cn(alertVariants({ variant }), className)}
       {...props}
     />
@@ -36,7 +37,7 @@ const Alert = forwardRef<
 });
 Alert.displayName = "Alert";
 
-// Alert title
+// Alert title - usually appears bold at the top
 const AlertTitle = forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLHeadingElement>
@@ -51,7 +52,7 @@ const AlertTitle = forwardRef<
 });
 AlertTitle.displayName = "AlertTitle";
 
-// Alert description text
+// Alert description - the main message content
 const AlertDescription = forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
@@ -66,5 +67,5 @@ const AlertDescription = forwardRef<
 });
 AlertDescription.displayName = "AlertDescription";
 
-// Exports
+// Export alert components
 export { Alert, AlertTitle, AlertDescription };

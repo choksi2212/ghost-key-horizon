@@ -349,7 +349,7 @@ export function VoiceRegistration({ username, onComplete }: VoiceRegistrationPro
                     MFCC:{" "}
                     {extractedFeatures.mfccMean
                       ?.slice(0, 3)
-                      .map((v) => v.toFixed(2))
+                      .map((value: number) => value.toFixed(2))
                       .join(", ") || "N/A"}
                     ...
                   </div>

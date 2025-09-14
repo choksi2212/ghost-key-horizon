@@ -1,7 +1,7 @@
 import React, { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
-// Main card container
+// Card component - basic container with subtle styling
 const Card = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
     return (
@@ -18,7 +18,7 @@ const Card = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
 );
 Card.displayName = "Card";
 
-// Header section of the card
+// Card header - usually contains title and description
 const CardHeader = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
     return (
@@ -32,7 +32,7 @@ const CardHeader = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
 );
 CardHeader.displayName = "CardHeader";
 
-// Card title
+// Main title of the card - should be descriptive
 const CardTitle = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
     return (
@@ -49,7 +49,7 @@ const CardTitle = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement
 );
 CardTitle.displayName = "CardTitle";
 
-// Optional description below title
+// Subtitle or description text below the title
 const CardDescription = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
     return (
@@ -63,13 +63,13 @@ const CardDescription = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivE
 );
 CardDescription.displayName = "CardDescription";
 
-// Body/content area of the card
+// Main content area - this is where most of the card content goes
 const CardContent = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
     return (
       <div
         ref={ref}
-        className={cn("p-6 pt-0", className)}
+        className={cn("p-6 pt-0", className)} // pt-0 prevents double padding with header
         {...props}
       />
     );
@@ -77,7 +77,7 @@ const CardContent = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEleme
 );
 CardContent.displayName = "CardContent";
 
-// Footer for actions or summary
+// Footer area for buttons or additional info
 const CardFooter = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
     return (
@@ -91,7 +91,7 @@ const CardFooter = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
 );
 CardFooter.displayName = "CardFooter";
 
-// Export all components
+// Export all the card components for easy importing
 export {
   Card,
   CardHeader,

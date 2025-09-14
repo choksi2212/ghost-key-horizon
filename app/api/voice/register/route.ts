@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import fs from "fs/promises"
 import path from "path"
-import type { AggregatedVoiceFeatures } from "@/utils/voice-feature-extractor"
+import type { SessionVoiceProfile } from "@/utils/voice-feature-extractor"
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse the extracted features with validation
-    let extractedFeatures: AggregatedVoiceFeatures[] = []
+    let extractedFeatures: SessionVoiceProfile[] = []
     try {
       extractedFeatures = featuresJson ? JSON.parse(featuresJson) : []
 
@@ -110,14 +110,14 @@ export async function POST(request: NextRequest) {
 }
 
 // Helper function to calculate average features across multiple samples
-function calculateAverageFeatures(features: AggregatedVoiceFeatures[]): AggregatedVoiceFeatures {
+function calculateAverageFeatures(features: SessionVoiceProfile[]): SessionVoiceProfile {
   if (features.length === 0) {
     throw new Error("No features to average")
   }
 
-  // Initialize with the structure of the first feature
+  // Initialize with the structure of the first feature  
   const result: any = {}
-  const firstFeature = features[0]
+  const firstFeature = features[0] as any
 
   // For each property in the first feature
   for (const key in firstFeature) {
@@ -128,8 +128,9 @@ function calculateAverageFeatures(features: AggregatedVoiceFeatures[]): Aggregat
 
       // Sum all values
       for (const feature of features) {
+        const featureAny = feature as any
         for (let i = 0; i < arrayLength; i++) {
-          result[key][i] += feature[key][i]
+          result[key][i] += featureAny[key][i]
         }
       }
 
@@ -143,7 +144,8 @@ function calculateAverageFeatures(features: AggregatedVoiceFeatures[]): Aggregat
 
       // Sum all values
       for (const feature of features) {
-        result[key] += feature[key]
+        const featureAny = feature as any
+        result[key] += featureAny[key]
       }
 
       // Calculate average
@@ -154,5 +156,5 @@ function calculateAverageFeatures(features: AggregatedVoiceFeatures[]): Aggregat
     }
   }
 
-  return result as AggregatedVoiceFeatures
+  return result as SessionVoiceProfile
 }

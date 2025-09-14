@@ -1,15 +1,19 @@
 import type { Config } from "tailwindcss";
 
+// Tailwind configuration for our biometric authentication app
+// Using shadcn/ui design system with custom theme variables
 const config: Config = {
-    darkMode: ["class"],
+    darkMode: ["class"], // Enable class-based dark mode switching
     content: [
+    // Include all component files for proper CSS purging
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "*.{js,ts,jsx,tsx,mdx}"
+    "*.{js,ts,jsx,tsx,mdx}" // Include root level files
   ],
   theme: {
   	extend: {
+  		// Custom color palette using CSS custom properties for theme switching
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
@@ -43,7 +47,8 @@ const config: Config = {
   			},
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
-  			ring: 'hsl(var(--ring))',
+  			ring: 'hsl(var(--ring))', // Focus ring color
+  			// Chart colors for authentication analytics
   			chart: {
   				'1': 'hsl(var(--chart-1))',
   				'2': 'hsl(var(--chart-2))',
@@ -51,6 +56,7 @@ const config: Config = {
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
   			},
+  			// Sidebar component colors (for admin panel)
   			sidebar: {
   				DEFAULT: 'hsl(var(--sidebar-background))',
   				foreground: 'hsl(var(--sidebar-foreground))',
@@ -62,12 +68,15 @@ const config: Config = {
   				ring: 'hsl(var(--sidebar-ring))'
   			}
   		},
+  		// Custom border radius using CSS variables for consistency
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
   		},
+  		// Custom animations for better UX
   		keyframes: {
+  			// Accordion expand/collapse animations
   			'accordion-down': {
   				from: {
   					height: '0'
@@ -91,6 +100,6 @@ const config: Config = {
   		}
   	}
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate")], // Enable animation utilities
 };
 export default config;
